@@ -1,0 +1,93 @@
+{
+	"info": {
+		"name": "Complete API Collection",
+		"description": "Admin, User, Bill, Reward and Redemption API collection",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Admin",
+			"item": [
+				{"name": "Create Admin", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"adminId\": \"admin123\",\n  \"password\": \"test123\",\n  \"name\": \"Test Admin\"\n}"}, "url": {"raw": "http://localhost:5001/api/admin/create", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "admin", "create"]}}},
+				{"name": "Admin Login", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"adminId\": \"admin123\",\n  \"password\": \"test123\"\n}"}, "url": {"raw": "http://localhost:5001/api/admin/login", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "admin", "login"]}}},
+				{"name": "List Admins", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/admin/list", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "admin", "list"]}}},
+				{"name": "Logout All Sessions", "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/admin/logout-all", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "admin", "logout-all"]}}}
+			]
+		},
+		{
+			"name": "User",
+			"item": [
+				{"name": "Register User", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"name\": \"John Doe\",\n  \"password\": \"test123\",\n  \"mobile\": \"9876543210\"\n}"}, "url": {"raw": "http://localhost:5001/api/users/register", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "users", "register"]}}},
+				{"name": "User Login", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"mobile\": \"9876543210\",\n  \"password\": \"test123\"\n}"}, "url": {"raw": "http://localhost:5001/api/users/login", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "users", "login"]}}},
+				{"name": "Get User Profile", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{user_token}}"}], "url": {"raw": "http://localhost:5001/api/users/profile", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "users", "profile"]}}},
+				{"name": "Update User Profile", "request": {"method": "PUT", "header": [{"key": "Authorization", "value": "Bearer {{user_token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"name\": \"John Updated\",\n  \"mobile\": \"9999999999\"\n}"}, "url": {"raw": "http://localhost:5001/api/users/profile", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "users", "profile"]}}},
+				{"name": "User Logout", "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{user_token}}"}], "url": {"raw": "http://localhost:5001/api/users/logout", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "users", "logout"]}}}
+			]
+		},
+		{
+			"name": "Admin - User Management",
+			"item": [
+				{"name": "Get All Users", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/users/admin/all", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "users", "admin", "all"]}}},
+				{"name": "Get Single User", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/users/admin/:id", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "users", "admin", ":id"], "variable": [{"key": "id", "value": "{{user_id}}"}]}}},
+				{"name": "Toggle User Status", "request": {"method": "PATCH", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"isActive\": false\n}"}, "url": {"raw": "http://localhost:5001/api/users/admin/:id/status", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "users", "admin", ":id", "status"], "variable": [{"key": "id", "value": "{{user_id}}"}]}}},
+				{"name": "Delete User", "request": {"method": "DELETE", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/users/admin/:id", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "users", "admin", ":id"], "variable": [{"key": "id", "value": "{{user_id}}"}]}}}
+			]
+		},
+		{
+			"name": "Bill - User",
+			"item": [
+				{"name": "Upload Bill", "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{user_token}}"}], "body": {"mode": "formdata", "formdata": [{"key": "billFile", "type": "file", "src": ""}, {"key": "amount", "value": "1500", "type": "text"}]}, "url": {"raw": "http://localhost:5001/api/bills/upload", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "bills", "upload"]}}},
+				{"name": "Get My Bills", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{user_token}}"}], "url": {"raw": "http://localhost:5001/api/bills/my-bills", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "bills", "my-bills"]}}},
+				{"name": "Get Single Bill", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{user_token}}"}], "url": {"raw": "http://localhost:5001/api/bills/my-bills/:id", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "bills", "my-bills", ":id"], "variable": [{"key": "id", "value": "{{bill_id}}"}]}}}
+			]
+		},
+		{
+			"name": "Bill - Admin",
+			"item": [
+				{"name": "Set Point Configuration", "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"amountPerPoint\": 100\n}"}, "url": {"raw": "http://localhost:5001/api/bills/admin/point-config", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "bills", "admin", "point-config"]}}},
+				{"name": "Get Point Configuration", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/bills/admin/point-config", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "bills", "admin", "point-config"]}}},
+				{"name": "Get All Bills", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/bills/admin/all", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "bills", "admin", "all"]}}},
+				{"name": "Get All Bills (Pending)", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/bills/admin/all?status=pending", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "bills", "admin", "all"], "query": [{"key": "status", "value": "pending"}]}}},
+				{"name": "Get Bill Detail", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/bills/admin/:id", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "bills", "admin", ":id"], "variable": [{"key": "id", "value": "{{bill_id}}"}]}}},
+				{"name": "Edit Bill Amount", "request": {"method": "PATCH", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"amount\": 2000\n}"}, "url": {"raw": "http://localhost:5001/api/bills/admin/:id/edit-amount", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "bills", "admin", ":id", "edit-amount"], "variable": [{"key": "id", "value": "{{bill_id}}"}]}}},
+				{"name": "Approve Bill", "request": {"method": "PATCH", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/bills/admin/:id/approve", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "bills", "admin", ":id", "approve"], "variable": [{"key": "id", "value": "{{bill_id}}"}]}}},
+				{"name": "Reject Bill", "request": {"method": "PATCH", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"rejectionReason\": \"Invalid bill or unclear image\"\n}"}, "url": {"raw": "http://localhost:5001/api/bills/admin/:id/reject", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "bills", "admin", ":id", "reject"], "variable": [{"key": "id", "value": "{{bill_id}}"}]}}}
+			]
+		},
+		{
+			"name": "Reward - User",
+			"item": [
+				{"name": "Get All Rewards", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{user_token}}"}], "url": {"raw": "http://localhost:5001/api/rewards/user/all", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "rewards", "user", "all"]}}},
+				{"name": "Apply for Redemption", "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{user_token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"rewardId\": \"{{reward_id}}\"\n}"}, "url": {"raw": "http://localhost:5001/api/rewards/user/apply", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "rewards", "user", "apply"]}}},
+				{"name": "Get My Redemptions", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{user_token}}"}], "url": {"raw": "http://localhost:5001/api/rewards/user/my-redemptions", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "rewards", "user", "my-redemptions"]}}}
+			]
+		},
+		{
+			"name": "Reward - Admin",
+			"item": [
+				{"name": "Add Reward", "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"rewardName\": \"Table Fan\",\n  \"rewardImage\": \"https://example.com/fan.jpg\",\n  \"pointsRequired\": 50,\n  \"description\": \"High speed table fan\"\n}"}, "url": {"raw": "http://localhost:5001/api/rewards/admin/add", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "rewards", "admin", "add"]}}},
+				{"name": "Get All Rewards", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/rewards/admin/rewards", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "rewards", "admin", "rewards"]}}},
+				{"name": "Update Reward", "request": {"method": "PUT", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"pointsRequired\": 60,\n  \"isActive\": true\n}"}, "url": {"raw": "http://localhost:5001/api/rewards/admin/rewards/:id", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "rewards", "admin", "rewards", ":id"], "variable": [{"key": "id", "value": "{{reward_id}}"}]}}},
+				{"name": "Delete Reward", "request": {"method": "DELETE", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/rewards/admin/rewards/:id", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "rewards", "admin", "rewards", ":id"], "variable": [{"key": "id", "value": "{{reward_id}}"}]}}}
+			]
+		},
+		{
+			"name": "Redemption - Admin",
+			"item": [
+				{"name": "Get All Redemptions", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/rewards/admin/redemptions", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "rewards", "admin", "redemptions"]}}},
+				{"name": "Get All Redemptions (Pending)", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/rewards/admin/redemptions?status=pending", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "rewards", "admin", "redemptions"], "query": [{"key": "status", "value": "pending"}]}}},
+				{"name": "Get Redemption Detail", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/rewards/admin/redemptions/:id", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "rewards", "admin", "redemptions", ":id"], "variable": [{"key": "id", "value": "{{redemption_id}}"}]}}},
+				{"name": "Approve Redemption", "request": {"method": "PATCH", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}], "url": {"raw": "http://localhost:5001/api/rewards/admin/redemptions/:id/approve", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "rewards", "admin", "redemptions", ":id", "approve"], "variable": [{"key": "id", "value": "{{redemption_id}}"}]}}},
+				{"name": "Reject Redemption", "request": {"method": "PATCH", "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"rejectionReason\": \"Insufficient verification\"\n}"}, "url": {"raw": "http://localhost:5001/api/rewards/admin/redemptions/:id/reject", "protocol": "http", "host": ["localhost"], "port": "5001", "path": ["api", "rewards", "admin", "redemptions", ":id", "reject"], "variable": [{"key": "id", "value": "{{redemption_id}}"}]}}}
+			]
+		}
+	],
+	"variable": [
+		{"key": "admin_token", "value": "", "type": "string"},
+		{"key": "user_token", "value": "", "type": "string"},
+		{"key": "user_id", "value": "", "type": "string"},
+		{"key": "bill_id", "value": "", "type": "string"},
+		{"key": "reward_id", "value": "", "type": "string"},
+		{"key": "redemption_id", "value": "", "type": "string"}
+	]
+}
