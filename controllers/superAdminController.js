@@ -102,21 +102,48 @@ export const getAdminDetail = async (req, res) => {
   }
 };
 
-// Create admin (with auto shopId)
+// Create admin (with email)
 export const createAdmin = async (req, res) => {
   try {
-    const { adminId, password, name } = req.body;
-    if (!adminId || !password) return res.status(400).json({ message: "adminId and password required" });
+    const { email, password, name } = req.body;
+    if (!email || !password) return res.status(400).json({ message: "email and password are required" });
 
-    const exists = await Admin.findOne({ adminId });
-    if (exists) return res.status(409).json({ message: "Admin already exists" });
+    const exists = await Admin.findOne({ email: email.toLowerCase() });
+    if (exists) return res.status(409).json({ message: "Email already registered" });
 
     const shopId = "SHOP-" + nanoid(8).toUpperCase();
     const referralCode = "REF-" + nanoid(8).toUpperCase();
     const hash = await bcrypt.hash(password, 10);
-    const admin = await Admin.create({ adminId, password: hash, name, shopId, referralCode });
 
-    res.status(201).json({ message: "Admin created", admin: { adminId: admin.adminId, name: admin.name, shopId: admin.shopId, referralCode: admin.referralCode, id: admin._id } });
+    const admin = await Admin.create({
+      adminId: email.toLowerCase(),
+      email: email.toLowerCase(),
+      password: hash,
+      name,
+      shopId,
+      referralCode,
+    });
+
+    // Auto-assign 1 year free trial
+    try {
+      const endDate = new Date();
+      endDate.setFullYear(endDate.getFullYear() + 1);
+      const AdminSubscription = (await import("../models/AdminSubscription.js")).default;
+      await AdminSubscription.create({
+        adminId: admin._id,
+        planId: null,
+        billingType: "free_trial",
+        startDate: new Date(),
+        endDate,
+        status: "active",
+        assignedBy: "superadmin",
+      });
+    } catch (_) {}
+
+    res.status(201).json({
+      message: "Admin created",
+      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, referralCode: admin.referralCode, id: admin._id },
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

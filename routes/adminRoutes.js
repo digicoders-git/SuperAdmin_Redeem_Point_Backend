@@ -1,7 +1,8 @@
 import express from "express";
 import { 
   registerAdmin,
-  loginAdmin, 
+  loginAdmin,
+  googleLoginAdmin,
   listAdmins, 
   logoutAll, 
   changeAdminPassword, 
@@ -56,6 +57,7 @@ const upload = multer({
 
 router.post("/register", registerAdmin);
 router.post("/login", loginAdmin);
+router.post("/google-login", googleLoginAdmin);
 
 // protected routes
 router.get("/list", authenticateAdmin, listAdmins);

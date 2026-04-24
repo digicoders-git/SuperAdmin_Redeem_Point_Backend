@@ -41,20 +41,31 @@ export const registerUser = async (req, res) => {
   }
 };
 
-// Login User (email + password)
+// Login or Auto-Register User (email + password)
 export const loginUser = async (req, res) => {
   try {
-    const { email, password, shopId } = req.body;
+    const { email, password, shopId, name } = req.body;
     if (!email || !password)
       return res.status(400).json({ message: "email and password are required" });
 
-    const user = await User.findOne({ email: email.toLowerCase(), shopId: shopId || "" }).select("+password");
-    if (!user) return res.status(401).json({ message: "Invalid credentials" });
+    let user = await User.findOne({ email: email.toLowerCase(), shopId: shopId || "" }).select("+password");
 
-    const ok = await user.comparePassword(password);
-    if (!ok) return res.status(401).json({ message: "Invalid credentials" });
-
-    if (!user.isActive) return res.status(403).json({ message: "Account is inactive" });
+    if (!user) {
+      // Auto-create new user
+      user = await User.create({
+        name: name || email.split("@")[0],
+        email: email.toLowerCase(),
+        password,
+        mobile: "",
+        shopId: shopId || "",
+      });
+      user = await User.findOne({ email: email.toLowerCase(), shopId: shopId || "" }).select("+password");
+    } else {
+      // Existing user — verify password
+      const ok = await user.comparePassword(password);
+      if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+      if (!user.isActive) return res.status(403).json({ message: "Account is inactive" });
+    }
 
     const token = jwt.sign(
       { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },

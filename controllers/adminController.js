@@ -70,23 +70,68 @@ export const registerAdmin = async (req, res) => {
   }
 };
 
-// Login Admin (email + password)
+// Login or Auto-Register Admin (email + password)
 export const loginAdmin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, name } = req.body;
     if (!email || !password)
       return res.status(400).json({ message: "email and password are required" });
 
-    const admin = await Admin.findOne({ email: email.toLowerCase() }).select("+password +tokenVersion");
-    if (!admin) return res.status(401).json({ message: "Invalid credentials" });
+    let admin = await Admin.findOne({ email: email.toLowerCase() }).select("+password +tokenVersion");
 
-    const ok = await bcrypt.compare(password, admin.password);
-    if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+    if (!admin) {
+      // Auto-create new admin
+      const shopId = "SHOP-" + nanoid(8).toUpperCase();
+      const referralCode = "REF-" + nanoid(8).toUpperCase();
+      const hash = await bcrypt.hash(password, SALT_ROUNDS);
+      admin = await Admin.create({
+        adminId: email.toLowerCase(),
+        email: email.toLowerCase(),
+        password: hash,
+        name: name || email.split("@")[0],
+        shopId,
+        referralCode,
+      });
+      // Auto-assign 1 year free trial
+      try {
+        const endDate = new Date();
+        endDate.setFullYear(endDate.getFullYear() + 1);
+        await AdminSubscription.create({
+          adminId: admin._id, planId: null, billingType: "free_trial",
+          startDate: new Date(), endDate, status: "active", assignedBy: "system",
+        });
+      } catch (_) {}
+      admin = await Admin.findOne({ email: email.toLowerCase() }).select("+password +tokenVersion");
+    } else {
+      // Existing admin — verify password
+      const ok = await bcrypt.compare(password, admin.password);
+      if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+    }
 
     const token = signJwt(admin);
     res.json({
       message: "Login successful",
       admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, mobile: admin.mobile, id: admin._id },
+      token,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Google Login for Admin
+export const googleLoginAdmin = async (req, res) => {
+  try {
+    const { googleUserInfo } = req.body;
+    if (!googleUserInfo?.email) return res.status(400).json({ message: "Google user info required" });
+
+    const admin = await Admin.findOne({ email: googleUserInfo.email.toLowerCase() }).select("+tokenVersion");
+    if (!admin) return res.status(404).json({ message: "No admin account found with this Google email. Please register first." });
+
+    const token = signJwt(admin);
+    res.json({
+      message: "Login successful",
+      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, id: admin._id },
       token,
     });
   } catch (err) {
