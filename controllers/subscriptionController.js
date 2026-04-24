@@ -66,9 +66,9 @@ const activateNextSubscription = async (adminId) => {
 export const createPlan = async (req, res) => {
   try {
     const { name, description, monthlyPrice, annualPrice, features } = req.body;
-    if (!name || monthlyPrice === undefined || annualPrice === undefined)
-      return res.status(400).json({ message: "name, monthlyPrice and annualPrice are required" });
-    const plan = await SubscriptionPlan.create({ name, description, monthlyPrice, annualPrice, features: features || [] });
+    if (!name || annualPrice === undefined)
+      return res.status(400).json({ message: "name and annualPrice are required" });
+    const plan = await SubscriptionPlan.create({ name, description, monthlyPrice: monthlyPrice || 0, annualPrice, features: features || [] });
     res.status(201).json({ message: "Plan created", plan });
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
@@ -273,7 +273,7 @@ export const claimFreeTrial = async (req, res) => {
     console.log("settings:", settings);
 
     const endDate = new Date();
-    endDate.setDate(endDate.getDate() + settings.freeTrialDays);
+    endDate.setFullYear(endDate.getFullYear() + 1);
 
     const subscription = await AdminSubscription.create({
       adminId: req.admin.id,

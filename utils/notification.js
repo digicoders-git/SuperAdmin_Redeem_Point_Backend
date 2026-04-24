@@ -8,27 +8,23 @@ import admin from "../config/firebase.js";
  * @param {object} data - Optional data payload
  */
 export const sendPushNotification = async (token, title, body, data = {}) => {
-  if (!token) {
-    console.warn("No device token provided for notification");
+  if (!token) return null;
+  if (!admin.apps.length) {
+    console.warn("Firebase not initialized — skipping push notification");
     return null;
   }
 
-  const message = {
-    notification: {
-      title,
-      body,
-    },
-    data,
-    token,
-  };
-
   try {
-    const response = await admin.messaging().send(message);
-    console.log("Successfully sent push notification:", response);
+    const response = await admin.messaging().send({
+      notification: { title, body },
+      data,
+      token,
+    });
+    console.log("Push notification sent:", response);
     return response;
   } catch (error) {
-    console.error("Error sending push notification:", error);
-    throw error;
+    console.error("Error sending push notification:", error.message);
+    return null;
   }
 };
 
@@ -40,26 +36,24 @@ export const sendPushNotification = async (token, title, body, data = {}) => {
  * @param {object} data - Optional data payload
  */
 export const sendMulticastNotification = async (tokens, title, body, data = {}) => {
-  if (!tokens || tokens.length === 0) {
-    console.warn("No device tokens provided for multicast notification");
+  if (!tokens || tokens.length === 0) return null;
+  if (!admin.apps.length) {
+    console.warn("Firebase not initialized — skipping multicast notification");
     return null;
   }
 
-  const message = {
-    notification: {
-      title,
-      body,
-    },
-    data,
-    tokens: tokens.filter(t => !!t), // Filter out empty tokens
-  };
-
   try {
-    const response = await admin.messaging().sendEachForMulticast(message);
-    console.log(`${response.successCount} messages were sent successfully`);
+    const filtered = tokens.filter(t => !!t);
+    if (filtered.length === 0) return null;
+    const response = await admin.messaging().sendEachForMulticast({
+      notification: { title, body },
+      data,
+      tokens: filtered,
+    });
+    console.log(`${response.successCount} messages sent successfully`);
     return response;
   } catch (error) {
-    console.error("Error sending multicast notification:", error);
-    throw error;
+    console.error("Error sending multicast notification:", error.message);
+    return null;
   }
 };

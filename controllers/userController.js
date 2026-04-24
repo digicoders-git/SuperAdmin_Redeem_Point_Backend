@@ -582,6 +582,48 @@ export const deleteUser = async (req, res) => {
   }
 };
 
+// Google Login
+export const googleLogin = async (req, res) => {
+  try {
+    const { googleUserInfo, shopId } = req.body;
+    if (!googleUserInfo?.email) return res.status(400).json({ message: "Google user info required" });
+
+    const { email, name, sub: googleId } = googleUserInfo;
+
+    // Find or create user by email + shopId
+    let user = await User.findOne({ email, shopId: shopId || "" });
+    if (!user) {
+      const existing = await User.findOne({ email });
+      user = await User.create({
+        name: name || email.split("@")[0],
+        email,
+        mobile: existing?.mobile || googleId?.slice(0, 10) || "0000000000",
+        shopId: shopId || "",
+      });
+    }
+
+    const token = jwt.sign(
+      { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
+    let shopName = "Redeem App";
+    if (user.shopId) {
+      const admin = await Admin.findOne({ shopId: user.shopId }).select("name");
+      if (admin) shopName = admin.name;
+    }
+
+    res.json({
+      message: "Login successful",
+      user: { id: user._id, name: user.name, email: user.email, mobile: user.mobile, shopId: user.shopId, shopName },
+      token,
+    });
+  } catch (error) {
+    res.status(401).json({ message: "Google login failed", error: error.message });
+  }
+};
+
 // Get Public Shop Info
 export const getShopPublicInfo = async (req, res) => {
   try {

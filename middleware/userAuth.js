@@ -11,7 +11,7 @@ export const userAuth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.sub);
 
-    if (!user || user.tokenVersion !== decoded.tv) {
+    if (!user || (user.tokenVersion ?? 0) !== (decoded.tv ?? 0)) {
       return res.status(401).json({ message: "Invalid or expired token" });
     }
 

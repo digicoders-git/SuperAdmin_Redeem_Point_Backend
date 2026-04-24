@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema(
     },
     mobile: {
       type: String,
-      required: true,
+      default: "",
     },
     isActive: {
       type: Boolean,
@@ -55,6 +55,9 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ mobile: 1, shopId: 1 }, { unique: true });
 
 userSchema.pre("save", async function (next) {
+  if (this.isModified("name") && this.name) {
+    this.name = this.name.trim().replace(/\b\w/g, c => c.toUpperCase());
+  }
   if (!this.isModified("password") || !this.password) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();

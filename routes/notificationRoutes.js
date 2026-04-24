@@ -6,6 +6,8 @@ import {
   markAsRead,
   markAllAsRead,
   deleteNotification,
+  getSuperAdminNotificationHistory,
+  deleteSuperAdminNotificationBatch,
 } from "../controllers/notificationController.js";
 import { authenticateAdmin } from "../middleware/adminAuth.js";
 import { userAuth } from "../middleware/userAuth.js";
@@ -15,6 +17,8 @@ const router = express.Router();
 
 // SuperAdmin routes
 router.post("/send", authenticateSuperAdmin, sendNotification);
+router.get("/superadmin/history", authenticateSuperAdmin, getSuperAdminNotificationHistory);
+router.delete("/superadmin/batch", authenticateSuperAdmin, deleteSuperAdminNotificationBatch);
 
 // Admin routes
 router.get("/admin", authenticateAdmin, getAdminNotifications);

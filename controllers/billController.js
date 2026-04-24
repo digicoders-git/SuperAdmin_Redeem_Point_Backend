@@ -109,32 +109,47 @@ export const getBillDetail = async (req, res) => {
   }
 };
 
-// Admin: Edit Bill Amount
+// Admin: Edit Bill Amount (any status) + notify user
 export const editBillAmount = async (req, res) => {
   try {
-    const { amount } = req.body;
+    const { amount, editReason } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: "Valid amount is required" });
     }
+    if (!editReason?.trim()) {
+      return res.status(400).json({ message: "Edit reason is required" });
+    }
 
     const bill = await Bill.findById(req.params.id);
+    if (!bill) return res.status(404).json({ message: "Bill not found" });
 
-    if (!bill) {
-      return res.status(404).json({ message: "Bill not found" });
-    }
-
-    if (bill.status !== "pending") {
-      return res.status(400).json({ message: `Cannot edit amount of a ${bill.status} bill` });
-    }
-
+    const oldAmount = bill.amount;
     bill.amount = amount;
     await bill.save();
 
-    res.json({
-      message: "Bill amount updated successfully",
-      bill,
-    });
+    // Notify user
+    const user = await User.findById(bill.userId);
+    if (user) {
+      if (user.fcmToken) {
+        await sendPushNotification(
+          user.fcmToken,
+          "📝 Bill Amount Updated",
+          `Your bill amount was updated from ₹${oldAmount} to ₹${amount}. Reason: ${editReason}`
+        );
+      }
+      await Notification.create({
+        recipientType: "user",
+        recipientId: bill.userId,
+        recipientModel: "User",
+        shopId: req.admin.shopId,
+        title: "📝 Bill Amount Updated",
+        message: `Your bill amount was updated from ₹${oldAmount} to ₹${amount}. Reason: ${editReason}`,
+        type: "system",
+      });
+    }
+
+    res.json({ message: "Bill amount updated successfully", bill });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

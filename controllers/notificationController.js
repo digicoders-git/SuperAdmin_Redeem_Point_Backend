@@ -32,6 +32,30 @@ export const notifyShopUsers = async (shopId, title, message, type = "custom", m
   }
 };
 
+// SuperAdmin: Delete notification batch (same title+message sent together)
+export const deleteSuperAdminNotificationBatch = async (req, res) => {
+  try {
+    const { title, message } = req.body;
+    if (!title || !message) return res.status(400).json({ message: "title and message required" });
+    await Notification.deleteMany({ sentBy: "superadmin", title, message });
+    res.json({ message: "Notification batch deleted" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// SuperAdmin: Get sent notification history
+export const getSuperAdminNotificationHistory = async (req, res) => {
+  try {
+    const notifications = await Notification.find({ sentBy: "superadmin" })
+      .sort({ createdAt: -1 })
+      .limit(100);
+    res.json({ notifications });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // SuperAdmin: Send custom notification
 export const sendNotification = async (req, res) => {
   try {

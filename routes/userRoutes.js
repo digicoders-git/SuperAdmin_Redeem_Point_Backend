@@ -4,6 +4,7 @@ import {
   sendLoginOTP,
   verifyLoginOTP,
   completeUserRegistration,
+  googleLogin,
   getProfile,
   updateProfile,
   uploadUserPhoto,
@@ -31,6 +32,7 @@ router.post("/register", registerUser);
 router.post("/send-otp", sendLoginOTP);
 router.post("/verify-otp", verifyLoginOTP);
 router.post("/complete-registration", completeUserRegistration);
+router.post("/google-login", googleLogin);
 router.get("/shop-info/:shopId", getShopPublicInfo);
 router.get("/profile", userAuth, getProfile);
 router.get("/shops", userAuth, getUserShops);

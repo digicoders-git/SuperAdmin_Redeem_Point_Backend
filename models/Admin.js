@@ -22,6 +22,9 @@ const adminSchema = new mongoose.Schema(
 
 // Auto-save IST time on create
 adminSchema.pre("save", function (next) {
+  if (this.isModified("name") && this.name) {
+    this.name = this.name.trim().replace(/\b\w/g, c => c.toUpperCase());
+  }
   const istTime = new Date().toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
     hour12: true,

@@ -16,7 +16,7 @@ export const authenticateAdminOnly = async (req, res, next) => {
     const admin = await Admin.findById(decoded.sub).select("+tokenVersion +shopId");
 
     if (!admin) return res.status(401).json({ message: "Invalid admin token" });
-    if (admin.tokenVersion !== decoded.tv) return res.status(401).json({ message: "Token expired, please login again" });
+    if ((admin.tokenVersion ?? 0) !== (decoded.tv ?? 0)) return res.status(401).json({ message: "Token expired, please login again" });
 
     req.admin = { id: admin._id.toString(), adminId: admin.adminId, name: admin.name, shopId: admin.shopId };
     next();
@@ -36,7 +36,7 @@ export const authenticateAdmin = async (req, res, next) => {
     const admin = await Admin.findById(decoded.sub).select("+tokenVersion +shopId");
 
     if (!admin) return res.status(401).json({ message: "Invalid admin token" });
-    if (admin.tokenVersion !== decoded.tv) return res.status(401).json({ message: "Token expired, please login again" });
+    if ((admin.tokenVersion ?? 0) !== (decoded.tv ?? 0)) return res.status(401).json({ message: "Token expired, please login again" });
 
     req.admin = { id: admin._id.toString(), adminId: admin.adminId, name: admin.name, shopId: admin.shopId };
     
