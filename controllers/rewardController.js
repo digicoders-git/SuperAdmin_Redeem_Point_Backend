@@ -35,13 +35,17 @@ export const addReward = async (req, res) => {
     // Notify all shop users about new reward
     const admin = await Admin.findById(req.admin.id);
     if (admin?.shopId) {
-      await notifyShopUsers(
-        admin.shopId,
-        "🎁 New Reward Available!",
-        `${rewardName} is now available for ${pointsRequired} points. Check it out!`,
-        "reward",
-        { rewardId: reward._id }
-      );
+      try {
+        await notifyShopUsers(
+          admin.shopId,
+          "🎁 New Reward Available!",
+          `${rewardName} is now available for ${pointsRequired} points. Check it out!`,
+          "reward",
+          { rewardId: reward._id }
+        );
+      } catch (notifErr) {
+        console.error("Reward notification failed:", notifErr.message);
+      }
     }
 
     res.status(201).json({ message: "Reward added successfully", reward });
@@ -261,22 +265,28 @@ export const approveRedemption = async (req, res) => {
         .json({ message: `Redemption is already ${redemption.status}` });
     }
 
-    const user = await User.findById(redemption.userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    // Re-fetch fresh user points to prevent race condition
+    const freshUser = await User.findById(redemption.userId);
+    if (!freshUser) return res.status(404).json({ message: "User not found" });
 
-    if (user.walletPoints < redemption.pointsUsed) {
+    if (freshUser.walletPoints < redemption.pointsUsed) {
       return res.status(400).json({
-        message: "User has insufficient points",
+        message: `User has insufficient points (available: ${freshUser.walletPoints}, required: ${redemption.pointsUsed})`,
         required: redemption.pointsUsed,
-        available: user.walletPoints,
+        available: freshUser.walletPoints,
       });
     }
 
-    // Deduct points from user wallet
-    user.walletPoints -= redemption.pointsUsed;
-    await user.save();
+    // Atomically deduct points — only if still sufficient
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: redemption.userId, walletPoints: { $gte: redemption.pointsUsed } },
+      { $inc: { walletPoints: -redemption.pointsUsed } },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(400).json({ message: "User has insufficient points" });
+    }
 
     // Update redemption status
     redemption.status = "approved";
@@ -286,9 +296,9 @@ export const approveRedemption = async (req, res) => {
 
     // Send push notification to user (non-blocking)
     try {
-      if (user.fcmToken) {
+      if (updatedUser.fcmToken) {
         await sendPushNotification(
-          user.fcmToken,
+          updatedUser.fcmToken,
           "🎊 Redemption Approved!",
           `Your request for ${redemption.rewardId.rewardName} has been approved! Enjoy your reward.`
         );
@@ -308,7 +318,7 @@ export const approveRedemption = async (req, res) => {
     res.json({
       message: "Redemption approved successfully",
       redemption,
-      remainingPoints: user.walletPoints,
+      remainingPoints: updatedUser.walletPoints,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

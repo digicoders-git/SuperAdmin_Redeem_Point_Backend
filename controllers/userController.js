@@ -44,28 +44,50 @@ export const registerUser = async (req, res) => {
 // Login or Auto-Register User (email + password)
 export const loginUser = async (req, res) => {
   try {
-    const { email, password, shopId, name } = req.body;
+    const { email, password, shopId } = req.body;
     if (!email || !password)
       return res.status(400).json({ message: "email and password are required" });
 
-    let user = await User.findOne({ email: email.toLowerCase(), shopId: shopId || "" }).select("+password");
+    // Find ALL accounts with this email
+    const allAccounts = await User.find({ email: email.toLowerCase() }).select("+password");
 
-    if (!user) {
-      // Auto-create new user
-      user = await User.create({
-        name: name || email.split("@")[0],
+    if (allAccounts.length === 0) {
+      // Brand new user — auto create
+      const newUser = await User.create({
+        name: email.split("@")[0],
         email: email.toLowerCase(),
         password,
         mobile: "",
         shopId: shopId || "",
       });
-      user = await User.findOne({ email: email.toLowerCase(), shopId: shopId || "" }).select("+password");
-    } else {
-      // Existing user — verify password
-      const ok = await user.comparePassword(password);
-      if (!ok) return res.status(401).json({ message: "Invalid credentials" });
-      if (!user.isActive) return res.status(403).json({ message: "Account is inactive" });
+      const token = jwt.sign(
+        { sub: newUser._id, mobile: newUser.mobile, tv: newUser.tokenVersion },
+        process.env.JWT_SECRET,
+        { expiresIn: "30d" }
+      );
+      let shopName = "Inaamify";
+      if (newUser.shopId) {
+        const admin = await Admin.findOne({ shopId: newUser.shopId }).select("name");
+        if (admin) shopName = admin.name;
+      }
+      return res.json({
+        message: "Login successful",
+        user: { id: newUser._id, name: newUser.name, email: newUser.email, shopId: newUser.shopId, shopName },
+        token,
+        multipleShops: false,
+      });
     }
+
+    // Verify password against first account
+    const ok = await allAccounts[0].comparePassword(password);
+    if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+
+    // If shopId provided, find that specific account
+    let user = shopId
+      ? allAccounts.find(u => u.shopId === shopId) || allAccounts[0]
+      : allAccounts[0];
+
+    if (!user.isActive) return res.status(403).json({ message: "Your account has been deactivated by this shop owner." });
 
     const token = jwt.sign(
       { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },
@@ -79,10 +101,14 @@ export const loginUser = async (req, res) => {
       if (admin) shopName = admin.name;
     }
 
+    // Multiple shop accounts — redirect to shop selection
+    const multipleShops = allAccounts.filter(u => u.shopId).length > 1;
+
     res.json({
       message: "Login successful",
       user: { id: user._id, name: user.name, email: user.email, shopId: user.shopId, shopName },
       token,
+      multipleShops,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -299,14 +325,16 @@ export const verifyLoginOTP = async (req, res) => {
 // Get User's Shops
 export const getUserShops = async (req, res) => {
   try {
-    const users = await User.find({ mobile: req.user.mobile })
-      .select("shopId createdAt")
+    const currentUser = await User.findById(req.user.sub).select("email");
+    if (!currentUser) return res.status(404).json({ message: "User not found" });
+
+    const users = await User.find({ email: currentUser.email })
+      .select("shopId createdAt name")
       .sort({ createdAt: -1 });
-    
-    // Get admin details for each shop
+
     const shopsWithDetails = await Promise.all(
       users.map(async (u) => {
-        const admin = await import("../models/Admin.js").then(m => m.default.findOne({ shopId: u.shopId }).select("name shopId adminId"));
+        const admin = await Admin.findOne({ shopId: u.shopId }).select("name shopId adminId");
         return {
           userId: u._id,
           shopId: u.shopId,
@@ -316,7 +344,7 @@ export const getUserShops = async (req, res) => {
         };
       })
     );
-    
+
     res.json({ shops: shopsWithDetails });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -327,41 +355,29 @@ export const getUserShops = async (req, res) => {
 export const switchShop = async (req, res) => {
   try {
     const { userId } = req.body;
-    
-    // Verify the userId belongs to the same mobile number
+
     const targetUser = await User.findById(userId);
-    if (!targetUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    
-    const currentUser = await User.findById(req.user.sub);
-    if (targetUser.mobile !== currentUser.mobile) {
+    if (!targetUser) return res.status(404).json({ message: "User not found" });
+
+    const currentUser = await User.findById(req.user.sub).select("email");
+    if (targetUser.email !== currentUser.email)
       return res.status(403).json({ message: "Unauthorized shop access" });
-    }
-    
-    // Generate new token for the selected user
+
     const token = jwt.sign(
       { sub: targetUser._id, mobile: targetUser.mobile, tv: targetUser.tokenVersion },
       process.env.JWT_SECRET,
       { expiresIn: "30d" }
     );
-    
-    // Fetch shop name
-    let shopName = "CS Partner App";
+
+    let shopName = "Inaamify";
     if (targetUser.shopId) {
       const admin = await Admin.findOne({ shopId: targetUser.shopId }).select("name");
       if (admin) shopName = admin.name;
     }
-    
+
     res.json({
       message: "Shop switched successfully",
-      user: {
-        id: targetUser._id,
-        name: targetUser.name,
-        mobile: targetUser.mobile,
-        shopId: targetUser.shopId,
-        shopName,
-      },
+      user: { id: targetUser._id, name: targetUser.name, email: targetUser.email, shopId: targetUser.shopId, shopName },
       token,
     });
   } catch (error) {

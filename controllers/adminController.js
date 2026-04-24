@@ -119,14 +119,35 @@ export const loginAdmin = async (req, res) => {
   }
 };
 
-// Google Login for Admin
+// Google Login for Admin — auto register if not exists
 export const googleLoginAdmin = async (req, res) => {
   try {
     const { googleUserInfo } = req.body;
     if (!googleUserInfo?.email) return res.status(400).json({ message: "Google user info required" });
 
-    const admin = await Admin.findOne({ email: googleUserInfo.email.toLowerCase() }).select("+tokenVersion");
-    if (!admin) return res.status(404).json({ message: "No admin account found with this Google email. Please register first." });
+    let admin = await Admin.findOne({ email: googleUserInfo.email.toLowerCase() }).select("+tokenVersion");
+
+    if (!admin) {
+      // Auto-create new admin
+      const shopId = "SHOP-" + nanoid(8).toUpperCase();
+      const referralCode = "REF-" + nanoid(8).toUpperCase();
+      admin = await Admin.create({
+        adminId: googleUserInfo.email.toLowerCase(),
+        email: googleUserInfo.email.toLowerCase(),
+        name: googleUserInfo.name || googleUserInfo.email.split("@")[0],
+        shopId,
+        referralCode,
+      });
+      try {
+        const endDate = new Date();
+        endDate.setFullYear(endDate.getFullYear() + 1);
+        await AdminSubscription.create({
+          adminId: admin._id, planId: null, billingType: "free_trial",
+          startDate: new Date(), endDate, status: "active", assignedBy: "system",
+        });
+      } catch (_) {}
+      admin = await Admin.findOne({ email: googleUserInfo.email.toLowerCase() }).select("+tokenVersion");
+    }
 
     const token = signJwt(admin);
     res.json({
