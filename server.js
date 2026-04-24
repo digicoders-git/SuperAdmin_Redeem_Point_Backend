@@ -63,9 +63,7 @@ try {
   const mongoose = await import("mongoose");
   const col = mongoose.default.connection.collection("users");
   await col.dropIndex("email_1").catch(() => {});
-  await col.dropIndex("mobile_1_shopId_1").catch(() => {});
-  await col.dropIndex("email_1_shopId_1").catch(() => {});
-  console.log("✅ User indexes cleaned up");
+  console.log("✅ Old User indexes dropped (if existed)");
 } catch (_) {}
 
 // Mount routes

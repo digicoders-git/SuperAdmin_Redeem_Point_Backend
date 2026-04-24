@@ -16,7 +16,7 @@ export const userAuth = async (req, res, next) => {
     }
 
     if (!user.isActive) {
-      return res.status(403).json({ message: "Account is inactive" });
+      return res.status(403).json({ message: "Your account has been deactivated by this shop owner. Please contact the shop for assistance." });
     }
 
     req.user = decoded;
