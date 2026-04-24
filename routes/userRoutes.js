@@ -1,9 +1,7 @@
 import express from "express";
 import {
   registerUser,
-  sendLoginOTP,
-  verifyLoginOTP,
-  completeUserRegistration,
+  loginUser,
   googleLogin,
   getProfile,
   updateProfile,
@@ -29,9 +27,7 @@ const router = express.Router();
 
 // User routes
 router.post("/register", registerUser);
-router.post("/send-otp", sendLoginOTP);
-router.post("/verify-otp", verifyLoginOTP);
-router.post("/complete-registration", completeUserRegistration);
+router.post("/login", loginUser);
 router.post("/google-login", googleLogin);
 router.get("/shop-info/:shopId", getShopPublicInfo);
 router.get("/profile", userAuth, getProfile);

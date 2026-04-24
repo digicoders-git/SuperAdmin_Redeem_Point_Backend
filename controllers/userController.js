@@ -5,27 +5,73 @@ import jwt from "jsonwebtoken";
 // Temporary OTP storage (in production, use Redis)
 const otpStore = new Map();
 
-// Register User
+// Register User (email + password)
 export const registerUser = async (req, res) => {
   try {
-    const { name, password, mobile, shopId } = req.body;
+    const { name, email, password, shopId } = req.body;
+    if (!name || !email || !password)
+      return res.status(400).json({ message: "name, email and password are required" });
+    if (password.length < 6)
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
 
-    // Check if user already exists with same mobile AND same shopId
-    const existingUser = await User.findOne({ mobile, shopId });
-    if (existingUser) {
-      return res.status(400).json({ message: "You are already registered with this shop" });
+    const exists = await User.findOne({ email: email.toLowerCase(), shopId: shopId || "" });
+    if (exists) return res.status(409).json({ message: "Already registered with this shop" });
+
+    const user = await User.create({ name, email: email.toLowerCase(), password, mobile: "", shopId: shopId || "" });
+
+    const token = jwt.sign(
+      { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
+    let shopName = "Inaamify";
+    if (user.shopId) {
+      const admin = await Admin.findOne({ shopId: user.shopId }).select("name");
+      if (admin) shopName = admin.name;
     }
 
-    const user = await User.create({ name, password, mobile, shopId: shopId || "" });
-
     res.status(201).json({
-      message: "User registered successfully",
-      user: {
-        id: user._id,
-        name: user.name,
-        mobile: user.mobile,
-        shopId: user.shopId,
-      },
+      message: "Registered successfully",
+      user: { id: user._id, name: user.name, email: user.email, shopId: user.shopId, shopName },
+      token,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Login User (email + password)
+export const loginUser = async (req, res) => {
+  try {
+    const { email, password, shopId } = req.body;
+    if (!email || !password)
+      return res.status(400).json({ message: "email and password are required" });
+
+    const user = await User.findOne({ email: email.toLowerCase(), shopId: shopId || "" }).select("+password");
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
+
+    const ok = await user.comparePassword(password);
+    if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+
+    if (!user.isActive) return res.status(403).json({ message: "Account is inactive" });
+
+    const token = jwt.sign(
+      { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
+    let shopName = "Inaamify";
+    if (user.shopId) {
+      const admin = await Admin.findOne({ shopId: user.shopId }).select("name");
+      if (admin) shopName = admin.name;
+    }
+
+    res.json({
+      message: "Login successful",
+      user: { id: user._id, name: user.name, email: user.email, shopId: user.shopId, shopName },
+      token,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

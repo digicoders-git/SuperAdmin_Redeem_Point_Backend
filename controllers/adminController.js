@@ -19,52 +19,35 @@ const signJwt = (admin) =>
     { expiresIn: "30d" }
   );
 
-  
-// Create Admin
-export const createAdmin = async (req, res) => {
+// Register Admin (email + password)
+export const registerAdmin = async (req, res) => {
   try {
-    // debug (optional)
-    // console.log("createAdmin headers:", req.headers);
-    // console.log("createAdmin body:", req.body);
+    const { email, password, name } = req.body;
+    if (!email || !password || !name)
+      return res.status(400).json({ message: "email, password and name are required" });
+    if (password.length < 6)
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
 
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({
-        message:
-          "Request body is empty. Make sure you are sending JSON and Content-Type: application/json",
-      });
-    }
+    const exists = await Admin.findOne({ email: email.toLowerCase() });
+    if (exists) return res.status(409).json({ message: "Email already registered" });
 
-    const { adminId, password, name } = req.body;
-
-    if (!adminId || !password) {
-      return res
-        .status(400)
-        .json({ message: "adminId and password are required." });
-    }
-
-    const exists = await Admin.findOne({ adminId }).lean();
-    if (exists) {
-      return res
-        .status(409)
-        .json({ message: "Admin with this adminId already exists." });
-    }
-
-    const hash = await bcrypt.hash(password, 10);
-    const resolvedAdminId = adminId || mobile; // Use provided ID or fallback to mobile
     const shopId = "SHOP-" + nanoid(8).toUpperCase();
     const referralCode = "REF-" + nanoid(8).toUpperCase();
-    const admin = await Admin.create({ adminId: resolvedAdminId, password: hash, name, mobile, shopId, referralCode });
+    const hash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    // Auto-assign free trial
+    const admin = await Admin.create({
+      adminId: email.toLowerCase(),
+      email: email.toLowerCase(),
+      password: hash,
+      name,
+      shopId,
+      referralCode,
+    });
+
+    // Auto-assign 1 year free trial
     try {
-      let settings = await SystemSettings.findOne();
-      if (!settings) {
-        settings = await SystemSettings.create({ freeTrialDays: 7 });
-      }
-      
       const endDate = new Date();
-      endDate.setDate(endDate.getDate() + settings.freeTrialDays);
-      
+      endDate.setFullYear(endDate.getFullYear() + 1);
       await AdminSubscription.create({
         adminId: admin._id,
         planId: null,
@@ -76,61 +59,38 @@ export const createAdmin = async (req, res) => {
       });
     } catch (_) {}
 
-    return res.status(201).json({
-      message: "Admin created successfully",
-      admin: { adminId: admin.adminId, name: admin.name, id: admin._id, shopId: admin.shopId, referralCode: admin.referralCode },
-    });
-  } catch (err) {
-    console.error("createAdmin error:", err);
-    return res.status(500).json({ message: "Server error" });
-  }
-};
-
-// Login Admin
-export const loginAdmin = async (req, res) => {
-  try {
-    // console.log("loginAdmin body:", req.body);
-
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({
-        message:
-          "Request body is empty. Make sure you are sending JSON and Content-Type: application/json",
-      });
-    }
-
-    const { adminId, password } = req.body;
-
-    if (!adminId || !password) {
-      return res
-        .status(400)
-        .json({ message: "adminId and password are required." });
-    }
-
-    const admin = await Admin.findOne({ adminId }).select(
-      "+password +tokenVersion"
-    );
-    if (!admin)
-      return res.status(401).json({ message: "Invalid credentials." });
-
-    const ok = await bcrypt.compare(password, admin.password);
-    if (!ok) return res.status(401).json({ message: "Invalid credentials." });
-
     const token = signJwt(admin);
-
-    return res.json({
-      message: "Login successful",
-      admin: {
-        adminId: admin.adminId,
-        name: admin.name,
-        shopId: admin.shopId,
-        mobile: admin.mobile,
-        id: admin._id,
-      },
+    res.status(201).json({
+      message: "Admin registered successfully",
+      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, id: admin._id },
       token,
     });
   } catch (err) {
-    console.error("loginAdmin error:", err);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Login Admin (email + password)
+export const loginAdmin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password)
+      return res.status(400).json({ message: "email and password are required" });
+
+    const admin = await Admin.findOne({ email: email.toLowerCase() }).select("+password +tokenVersion");
+    if (!admin) return res.status(401).json({ message: "Invalid credentials" });
+
+    const ok = await bcrypt.compare(password, admin.password);
+    if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+
+    const token = signJwt(admin);
+    res.json({
+      message: "Login successful",
+      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, mobile: admin.mobile, id: admin._id },
+      token,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -185,166 +145,6 @@ export const logoutAll = async (req, res) => {
   } catch (err) {
     console.error("logoutAll error:", err);
     res.status(500).json({ message: "Server error" });
-  }
-};
-
-// Send OTP for Admin Login/Registration
-export const sendAdminOTP = async (req, res) => {
-  try {
-    const { mobile } = req.body;
-
-    if (!mobile || mobile.length !== 10) {
-      return res.status(400).json({ message: "Valid 10-digit mobile number required" });
-    }
-
-    const otp = "1234";
-    adminOtpStore.set(mobile, {
-      otp,
-      expiresAt: Date.now() + 5 * 60 * 1000,
-      attempts: 0,
-    });
-
-    console.log(`Admin OTP for ${mobile}: ${otp}`);
-    console.log(`Current OTP store:`, Array.from(adminOtpStore.entries()));
-
-    res.json({
-      message: "OTP sent successfully",
-      mobile,
-      otp: process.env.NODE_ENV === "development" ? otp : undefined,
-    });
-  } catch (error) {
-    console.error("sendAdminOTP error:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Verify OTP for Admin
-export const verifyAdminOTP = async (req, res) => {
-  try {
-    const { mobile, otp } = req.body;
-
-    console.log(`Verifying OTP for mobile: ${mobile}, otp: ${otp}`);
-    console.log(`Current OTP store:`, Array.from(adminOtpStore.entries()));
-
-    if (!mobile || !otp) {
-      return res.status(400).json({ message: "Mobile and OTP are required" });
-    }
-
-    const otpData = adminOtpStore.get(mobile);
-    if (!otpData) {
-      return res.status(400).json({ message: "OTP not found or expired. Please request a new OTP" });
-    }
-
-    if (Date.now() > otpData.expiresAt) {
-      adminOtpStore.delete(mobile);
-      return res.status(400).json({ message: "OTP expired. Please request a new OTP" });
-    }
-
-    if (otpData.attempts >= 3) {
-      adminOtpStore.delete(mobile);
-      return res.status(400).json({ message: "Too many failed attempts. Please request a new OTP" });
-    }
-
-    if (otpData.otp !== otp) {
-      otpData.attempts++;
-      return res.status(400).json({
-        message: "Invalid OTP",
-        attemptsLeft: 3 - otpData.attempts,
-      });
-    }
-
-    adminOtpStore.delete(mobile);
-
-    const admin = await Admin.findOne({ mobile }).select("+tokenVersion");
-    
-    if (!admin) {
-      return res.json({
-        message: "OTP verified",
-        isNewUser: true,
-        mobile,
-      });
-    }
-
-    const token = signJwt(admin);
-    res.json({
-      message: "Login successful",
-      isNewUser: false,
-      admin: {
-        adminId: admin.adminId,
-        name: admin.name,
-        shopId: admin.shopId,
-        mobile: admin.mobile,
-        id: admin._id,
-      },
-      token,
-    });
-  } catch (error) {
-    console.error("verifyAdminOTP error:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Complete Admin Registration
-export const completeAdminRegistration = async (req, res) => {
-  try {
-    const { mobile, name } = req.body;
-
-    if (!mobile || !name) {
-      return res.status(400).json({ message: "Mobile and name are required" });
-    }
-
-    const exists = await Admin.findOne({ mobile });
-    if (exists) {
-      return res.status(409).json({ message: "Admin already exists" });
-    }
-
-    const adminId = mobile;
-    const shopId = "SHOP-" + nanoid(8).toUpperCase();
-    const referralCode = "REF-" + nanoid(8).toUpperCase();
-
-    const admin = await Admin.create({
-      adminId,
-      mobile,
-      name,
-      shopId,
-      referralCode,
-    });
-
-    try {
-      let settings = await SystemSettings.findOne();
-      if (!settings) {
-        settings = await SystemSettings.create({ freeTrialDays: 7 });
-      }
-      
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + settings.freeTrialDays);
-      
-      await AdminSubscription.create({
-        adminId: admin._id,
-        planId: null,
-        billingType: "free_trial",
-        startDate: new Date(),
-        endDate,
-        status: "active",
-        assignedBy: "system",
-      });
-    } catch (_) {}
-
-    const token = signJwt(admin);
-
-    res.status(201).json({
-      message: "Admin registered successfully",
-      admin: {
-        adminId: admin.adminId,
-        name: admin.name,
-        shopId: admin.shopId,
-        mobile: admin.mobile,
-        id: admin._id,
-      },
-      token,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
   }
 };
 

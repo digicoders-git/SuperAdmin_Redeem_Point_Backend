@@ -4,6 +4,7 @@ const adminSchema = new mongoose.Schema(
   {
     adminId: { type: String, required: true, unique: true, index: true },
     password: { type: String, select: false },
+    email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
     mobile: { type: String, unique: true, sparse: true },
     name: { type: String, default: "" },
     profilePhoto: { type: String, default: "" },

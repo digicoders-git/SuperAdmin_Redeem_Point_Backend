@@ -1,13 +1,10 @@
 import express from "express";
 import { 
-  createAdmin, 
+  registerAdmin,
   loginAdmin, 
   listAdmins, 
   logoutAll, 
   changeAdminPassword, 
-  sendAdminOTP, 
-  verifyAdminOTP, 
-  completeAdminRegistration, 
   getAdminTerms, 
   updateAdminTerms, 
   getTermsByShopId, 
@@ -57,11 +54,8 @@ const upload = multer({
   },
 });
 
-router.post("/create", createAdmin);
+router.post("/register", registerAdmin);
 router.post("/login", loginAdmin);
-router.post("/send-otp", sendAdminOTP);
-router.post("/verify-otp", verifyAdminOTP);
-router.post("/complete-registration", completeAdminRegistration);
 
 // protected routes
 router.get("/list", authenticateAdmin, listAdmins);
