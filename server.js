@@ -58,6 +58,13 @@ await seedTerms();
 await seedPrivacy();
 await seedSuperAdmin();
 
+// Fix: drop old email_1 unique index if exists (one-time migration)
+try {
+  const mongoose = await import("mongoose");
+  await mongoose.default.connection.collection("users").dropIndex("email_1");
+  console.log("✅ Dropped email_1 unique index");
+} catch (_) {}
+
 // Mount routes
 app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
