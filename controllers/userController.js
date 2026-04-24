@@ -661,19 +661,27 @@ export const googleLogin = async (req, res) => {
     const { googleUserInfo, shopId } = req.body;
     if (!googleUserInfo?.email) return res.status(400).json({ message: "Google user info required" });
 
-    const { email, name, sub: googleId } = googleUserInfo;
+    const { email, name } = googleUserInfo;
+    const emailLower = email.toLowerCase();
 
-    // Find or create user by email + shopId
-    let user = await User.findOne({ email, shopId: shopId || "" });
+    // Find existing account for this email + shopId
+    let user = await User.findOne({ email: emailLower, shopId: shopId || "" });
+
     if (!user) {
-      const existing = await User.findOne({ email });
+      // Auto-create new user
       user = await User.create({
-        name: name || email.split("@")[0],
-        email,
-        mobile: existing?.mobile || googleId?.slice(0, 10) || "0000000000",
+        name: name || emailLower.split("@")[0],
+        email: emailLower,
+        mobile: "",
         shopId: shopId || "",
       });
+    } else {
+      if (!user.isActive) return res.status(403).json({ message: "Your account has been deactivated by this shop owner." });
     }
+
+    // Check multiple shops
+    const allAccounts = await User.find({ email: emailLower });
+    const multipleShops = allAccounts.filter(u => u.shopId).length > 1;
 
     const token = jwt.sign(
       { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },
@@ -681,7 +689,7 @@ export const googleLogin = async (req, res) => {
       { expiresIn: "30d" }
     );
 
-    let shopName = "Redeem App";
+    let shopName = "Inaamify";
     if (user.shopId) {
       const admin = await Admin.findOne({ shopId: user.shopId }).select("name");
       if (admin) shopName = admin.name;
@@ -689,11 +697,12 @@ export const googleLogin = async (req, res) => {
 
     res.json({
       message: "Login successful",
-      user: { id: user._id, name: user.name, email: user.email, mobile: user.mobile, shopId: user.shopId, shopName },
+      user: { id: user._id, name: user.name, email: user.email, shopId: user.shopId, shopName },
       token,
+      multipleShops,
     });
   } catch (error) {
-    res.status(401).json({ message: "Google login failed", error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
