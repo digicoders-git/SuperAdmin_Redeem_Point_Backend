@@ -10,7 +10,6 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      unique: true,
       sparse: true,
       lowercase: true,
       trim: true,
@@ -52,8 +51,10 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Compound unique index: same mobile can register with different shops, but not same mobile + same shop
-userSchema.index({ mobile: 1, shopId: 1 }, { unique: true });
+// Compound unique index: same email can register with different shops, but not same email + same shop
+userSchema.index({ email: 1, shopId: 1 }, { unique: true, sparse: true });
+// Keep mobile+shopId index as well for backward compatibility
+userSchema.index({ mobile: 1, shopId: 1 }, { unique: true, sparse: true });
 
 userSchema.pre("save", async function (next) {
   if (this.isModified("name") && this.name) {
