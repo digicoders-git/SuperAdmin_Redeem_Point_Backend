@@ -51,10 +51,9 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Compound unique index: same email can register with different shops, but not same email + same shop
-userSchema.index({ email: 1, shopId: 1 }, { unique: true, sparse: true });
-// Keep mobile+shopId index as well for backward compatibility
-userSchema.index({ mobile: 1, shopId: 1 }, { unique: true, sparse: true });
+// email+shopId compound unique: same email can register with multiple shops
+// but cannot register twice with same shop
+userSchema.index({ email: 1, shopId: 1 }, { unique: true });
 
 userSchema.pre("save", async function (next) {
   if (this.isModified("name") && this.name) {

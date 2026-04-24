@@ -48,20 +48,22 @@ export const loginUser = async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ message: "email and password are required" });
 
-    // Find ALL accounts with this email
-    const allAccounts = await User.find({ email: email.toLowerCase() }).select("+password");
+    const emailLower = email.toLowerCase();
+
+    // Find ALL accounts with this email across all shops
+    const allAccounts = await User.find({ email: emailLower }).select("+password");
 
     if (allAccounts.length === 0) {
-      // Brand new user — auto create
+      // Brand new user — create account for this shop
       const newUser = await User.create({
-        name: email.split("@")[0],
-        email: email.toLowerCase(),
+        name: emailLower.split("@")[0],
+        email: emailLower,
         password,
         mobile: "",
         shopId: shopId || "",
       });
       const token = jwt.sign(
-        { sub: newUser._id, mobile: newUser.mobile, tv: newUser.tokenVersion },
+        { sub: newUser._id, mobile: "", tv: newUser.tokenVersion },
         process.env.JWT_SECRET,
         { expiresIn: "30d" }
       );
@@ -78,37 +80,71 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // Verify password against first account
+    // Verify password against any existing account
     const ok = await allAccounts[0].comparePassword(password);
     if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
-    // If shopId provided, find that specific account
-    let user = shopId
-      ? allAccounts.find(u => u.shopId === shopId) || allAccounts[0]
-      : allAccounts[0];
+    // If shopId provided, check if account exists for this shop
+    if (shopId) {
+      let shopAccount = allAccounts.find(u => u.shopId === shopId);
+      if (!shopAccount) {
+        // Auto-create account for this new shop
+        shopAccount = await User.create({
+          name: allAccounts[0].name,
+          email: emailLower,
+          password,
+          mobile: "",
+          shopId,
+        });
+      }
+      if (!shopAccount.isActive) return res.status(403).json({ message: "Your account has been deactivated by this shop owner." });
 
+      const token = jwt.sign(
+        { sub: shopAccount._id, mobile: "", tv: shopAccount.tokenVersion },
+        process.env.JWT_SECRET,
+        { expiresIn: "30d" }
+      );
+      const admin = await Admin.findOne({ shopId }).select("name");
+      return res.json({
+        message: "Login successful",
+        user: { id: shopAccount._id, name: shopAccount.name, email: shopAccount.email, shopId: shopAccount.shopId, shopName: admin?.name || "Inaamify" },
+        token,
+        multipleShops: allAccounts.length > 1,
+      });
+    }
+
+    // No shopId — if multiple shops, show selection
+    const activeAccounts = allAccounts.filter(u => u.shopId);
+    if (activeAccounts.length > 1) {
+      const firstUser = activeAccounts[0];
+      const token = jwt.sign(
+        { sub: firstUser._id, mobile: "", tv: firstUser.tokenVersion },
+        process.env.JWT_SECRET,
+        { expiresIn: "30d" }
+      );
+      const admin = await Admin.findOne({ shopId: firstUser.shopId }).select("name");
+      return res.json({
+        message: "Login successful",
+        user: { id: firstUser._id, name: firstUser.name, email: firstUser.email, shopId: firstUser.shopId, shopName: admin?.name || "Inaamify" },
+        token,
+        multipleShops: true,
+      });
+    }
+
+    // Single account
+    const user = allAccounts[0];
     if (!user.isActive) return res.status(403).json({ message: "Your account has been deactivated by this shop owner." });
-
     const token = jwt.sign(
-      { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },
+      { sub: user._id, mobile: "", tv: user.tokenVersion },
       process.env.JWT_SECRET,
       { expiresIn: "30d" }
     );
-
-    let shopName = "Inaamify";
-    if (user.shopId) {
-      const admin = await Admin.findOne({ shopId: user.shopId }).select("name");
-      if (admin) shopName = admin.name;
-    }
-
-    // Multiple shop accounts — redirect to shop selection
-    const multipleShops = allAccounts.filter(u => u.shopId).length > 1;
-
-    res.json({
+    const admin = user.shopId ? await Admin.findOne({ shopId: user.shopId }).select("name") : null;
+    return res.json({
       message: "Login successful",
-      user: { id: user._id, name: user.name, email: user.email, shopId: user.shopId, shopName },
+      user: { id: user._id, name: user.name, email: user.email, shopId: user.shopId, shopName: admin?.name || "Inaamify" },
       token,
-      multipleShops,
+      multipleShops: false,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -664,13 +700,14 @@ export const googleLogin = async (req, res) => {
     const { email, name } = googleUserInfo;
     const emailLower = email.toLowerCase();
 
-    // Find existing account for this email + shopId
+    // Find account for this email + shopId
     let user = await User.findOne({ email: emailLower, shopId: shopId || "" });
 
     if (!user) {
-      // Auto-create new user
+      // Get existing name if user has other shop accounts
+      const existing = await User.findOne({ email: emailLower });
       user = await User.create({
-        name: name || emailLower.split("@")[0],
+        name: existing?.name || name || emailLower.split("@")[0],
         email: emailLower,
         mobile: "",
         shopId: shopId || "",
@@ -679,12 +716,11 @@ export const googleLogin = async (req, res) => {
       if (!user.isActive) return res.status(403).json({ message: "Your account has been deactivated by this shop owner." });
     }
 
-    // Check multiple shops
     const allAccounts = await User.find({ email: emailLower });
     const multipleShops = allAccounts.filter(u => u.shopId).length > 1;
 
     const token = jwt.sign(
-      { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },
+      { sub: user._id, mobile: "", tv: user.tokenVersion },
       process.env.JWT_SECRET,
       { expiresIn: "30d" }
     );
