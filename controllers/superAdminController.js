@@ -121,6 +121,8 @@ export const createAdmin = async (req, res) => {
       password: hash,
       name,
       shopId,
+      shopName: "",
+      needsProfileSetup: true,
       referralCode,
     });
 
@@ -142,7 +144,7 @@ export const createAdmin = async (req, res) => {
 
     res.status(201).json({
       message: "Admin created",
-      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, referralCode: admin.referralCode, id: admin._id },
+      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, shopName: admin.shopName, mobile: admin.mobile, referralCode: admin.referralCode, id: admin._id },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

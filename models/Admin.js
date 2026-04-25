@@ -9,6 +9,8 @@ const adminSchema = new mongoose.Schema(
     name: { type: String, default: "" },
     profilePhoto: { type: String, default: "" },
     shopId: { type: String, unique: true, sparse: true },
+    shopName: { type: String, default: "" },
+    needsProfileSetup: { type: Boolean, default: true },
     referralCode: { type: String, unique: true, sparse: true },
     tokenVersion: { type: Number, default: 0, select: false },
     termsAndConditions: [{ type: String }],

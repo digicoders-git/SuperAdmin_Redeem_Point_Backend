@@ -41,6 +41,8 @@ export const registerAdmin = async (req, res) => {
       password: hash,
       name,
       shopId,
+      shopName: "",
+      needsProfileSetup: true,
       referralCode,
     });
 
@@ -62,7 +64,7 @@ export const registerAdmin = async (req, res) => {
     const token = signJwt(admin);
     res.status(201).json({
       message: "Admin registered successfully",
-      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, id: admin._id },
+      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, shopName: admin.shopName, needsProfileSetup: admin.needsProfileSetup, id: admin._id },
       token,
     });
   } catch (err) {
@@ -90,6 +92,8 @@ export const loginAdmin = async (req, res) => {
         password: hash,
         name: name || email.split("@")[0],
         shopId,
+        shopName: "",
+        needsProfileSetup: true,
         referralCode,
       });
       // Auto-assign 1 year free trial
@@ -111,7 +115,7 @@ export const loginAdmin = async (req, res) => {
     const token = signJwt(admin);
     res.json({
       message: "Login successful",
-      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, mobile: admin.mobile, id: admin._id },
+      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, shopName: admin.shopName, mobile: admin.mobile, needsProfileSetup: admin.needsProfileSetup, id: admin._id },
       token,
     });
   } catch (err) {
@@ -136,6 +140,8 @@ export const googleLoginAdmin = async (req, res) => {
         email: googleUserInfo.email.toLowerCase(),
         name: googleUserInfo.name || googleUserInfo.email.split("@")[0],
         shopId,
+        shopName: "",
+        needsProfileSetup: true,
         referralCode,
       });
       try {
@@ -152,7 +158,7 @@ export const googleLoginAdmin = async (req, res) => {
     const token = signJwt(admin);
     res.json({
       message: "Login successful",
-      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, id: admin._id },
+      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, shopName: admin.shopName, needsProfileSetup: admin.needsProfileSetup, id: admin._id },
       token,
     });
   } catch (err) {
@@ -252,7 +258,7 @@ export const updateAdminTerms = async (req, res) => {
 // Update Admin Profile (Name and Mobile)
 export const updateAdminProfile = async (req, res) => {
   try {
-    const { name, mobile } = req.body;
+    const { name, mobile, shopName, needsProfileSetup } = req.body;
     const admin = await Admin.findById(req.admin.id);
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
@@ -261,6 +267,8 @@ export const updateAdminProfile = async (req, res) => {
       admin.mobile = mobile;
       admin.adminId = mobile;
     }
+    if (shopName) admin.shopName = shopName;
+    if (needsProfileSetup !== undefined) admin.needsProfileSetup = needsProfileSetup;
     
     await admin.save();
 
@@ -270,8 +278,10 @@ export const updateAdminProfile = async (req, res) => {
         adminId: admin.adminId,
         name: admin.name,
         shopId: admin.shopId,
+        shopName: admin.shopName,
         mobile: admin.mobile,
         profilePhoto: admin.profilePhoto,
+        needsProfileSetup: admin.needsProfileSetup,
         id: admin._id,
       },
     });
@@ -312,8 +322,10 @@ export const uploadAdminProfilePhoto = async (req, res) => {
         adminId: admin.adminId,
         name: admin.name,
         shopId: admin.shopId,
+        shopName: admin.shopName,
         mobile: admin.mobile,
         profilePhoto: admin.profilePhoto,
+        needsProfileSetup: admin.needsProfileSetup,
         id: admin._id,
       },
     });
@@ -356,6 +368,7 @@ export const getAdminByShopId = async (req, res) => {
         name: admin.name,
         profilePhoto: admin.profilePhoto,
         shopId: admin.shopId,
+        shopName: admin.shopName,
       },
     });
   } catch (error) {
