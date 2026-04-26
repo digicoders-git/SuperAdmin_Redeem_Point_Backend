@@ -12,7 +12,9 @@ import {
   getAdminByShopId,
   updateAdminFCMToken,
   getAdminProfile,
-  deleteAdmin
+  deleteAdmin,
+  updateAdminProfile,
+  uploadAdminProfilePhoto
 } from "../controllers/adminController.js";
 import { authenticateAdmin } from "../middleware/adminAuth.js";
 import multer from "multer";
