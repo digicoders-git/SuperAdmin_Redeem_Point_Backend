@@ -423,6 +423,40 @@ export const addPointsToUser = async (req, res) => {
     user.walletPoints = (user.walletPoints || 0) + Number(points);
     await user.save();
 
+    // Create a manual bill entry so it shows in history
+    const Bill = (await import("../models/Bill.js")).default;
+    await Bill.create({
+      userId: user._id,
+      amount: 0,
+      billImage: "manual_adjustment",
+      status: "approved",
+      pointsEarned: Number(points),
+      approvedBy: req.admin.id,
+      approvedAt: new Date(),
+    });
+
+    // Send push notification
+    const { sendPushNotification } = await import("../utils/notification.js");
+    if (user.fcmToken) {
+      await sendPushNotification(
+        user.fcmToken,
+        "🎁 Points Received!",
+        `The admin added ${points} points to your wallet. Reason: ${reason || "Manual adjustment"}`
+      );
+    }
+
+    // Save in-app notification
+    const Notification = (await import("../models/Notification.js")).default;
+    await Notification.create({
+      recipientType: "user",
+      recipientId: user._id,
+      recipientModel: "User",
+      shopId: req.admin.shopId,
+      title: "🎁 Points Received!",
+      message: `Admin added ${points} points. Reason: ${reason || "Manual adjustment"}`,
+      type: "system"
+    });
+
     res.json({ message: "Points added successfully", walletPoints: user.walletPoints });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -9,10 +9,10 @@ import {
   getAdminTerms, 
   updateAdminTerms, 
   getTermsByShopId, 
-  updateAdminProfile, 
-  uploadAdminProfilePhoto, 
   getAdminByShopId,
-  updateAdminFCMToken
+  updateAdminFCMToken,
+  getAdminProfile,
+  deleteAdmin
 } from "../controllers/adminController.js";
 import { authenticateAdmin } from "../middleware/adminAuth.js";
 import multer from "multer";
@@ -63,7 +63,9 @@ router.post("/google-login", googleLoginAdmin);
 router.get("/list", authenticateAdmin, listAdmins);
 router.post("/logout-all", authenticateAdmin, logoutAll);
 router.patch("/change-password", authenticateAdmin, changeAdminPassword);
+router.get("/profile", authenticateAdmin, getAdminProfile);
 router.put("/profile", authenticateAdmin, updateAdminProfile);
+router.delete("/profile", authenticateAdmin, deleteAdmin);
 router.put("/update-fcm-token", authenticateAdmin, updateAdminFCMToken);
 router.post("/profile/photo", authenticateAdmin, upload.single("profilePhoto"), uploadAdminProfilePhoto);
 

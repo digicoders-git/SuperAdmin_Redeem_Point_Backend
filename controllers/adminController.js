@@ -19,10 +19,24 @@ const signJwt = (admin) =>
     { expiresIn: "30d" }
   );
 
+const getTrialEndDate = async () => {
+  try {
+    const settings = await SystemSettings.findOne();
+    const days = settings?.freeTrialDays ?? 7;
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + days);
+    return endDate;
+  } catch (_) {
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 7);
+    return endDate;
+  }
+};
+
 // Register Admin (email + password)
 export const registerAdmin = async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, shopName, mobile } = req.body;
     if (!email || !password || !name)
       return res.status(400).json({ message: "email, password and name are required" });
     if (password.length < 6)
@@ -40,16 +54,16 @@ export const registerAdmin = async (req, res) => {
       email: email.toLowerCase(),
       password: hash,
       name,
+      mobile: mobile || "",
       shopId,
-      shopName: "",
-      needsProfileSetup: true,
+      shopName: shopName || "",
+      needsProfileSetup: !(shopName && mobile),
       referralCode,
     });
 
-    // Auto-assign 1 year free trial
+    // Auto-assign free trial based on SystemSettings
     try {
-      const endDate = new Date();
-      endDate.setFullYear(endDate.getFullYear() + 1);
+      const endDate = await getTrialEndDate();
       await AdminSubscription.create({
         adminId: admin._id,
         planId: null,
@@ -64,7 +78,7 @@ export const registerAdmin = async (req, res) => {
     const token = signJwt(admin);
     res.status(201).json({
       message: "Admin registered successfully",
-      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, shopName: admin.shopName, needsProfileSetup: admin.needsProfileSetup, id: admin._id },
+      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, shopName: admin.shopName, mobile: admin.mobile, needsProfileSetup: admin.needsProfileSetup, id: admin._id },
       token,
     });
   } catch (err) {
@@ -96,10 +110,9 @@ export const loginAdmin = async (req, res) => {
         needsProfileSetup: true,
         referralCode,
       });
-      // Auto-assign 1 year free trial
+      // Auto-assign free trial based on SystemSettings
       try {
-        const endDate = new Date();
-        endDate.setFullYear(endDate.getFullYear() + 1);
+        const endDate = await getTrialEndDate();
         await AdminSubscription.create({
           adminId: admin._id, planId: null, billingType: "free_trial",
           startDate: new Date(), endDate, status: "active", assignedBy: "system",
@@ -145,8 +158,7 @@ export const googleLoginAdmin = async (req, res) => {
         referralCode,
       });
       try {
-        const endDate = new Date();
-        endDate.setFullYear(endDate.getFullYear() + 1);
+        const endDate = await getTrialEndDate();
         await AdminSubscription.create({
           adminId: admin._id, planId: null, billingType: "free_trial",
           startDate: new Date(), endDate, status: "active", assignedBy: "system",
@@ -158,7 +170,7 @@ export const googleLoginAdmin = async (req, res) => {
     const token = signJwt(admin);
     res.json({
       message: "Login successful",
-      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, shopName: admin.shopName, needsProfileSetup: admin.needsProfileSetup, id: admin._id },
+      admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, shopName: admin.shopName, mobile: admin.mobile, needsProfileSetup: admin.needsProfileSetup, id: admin._id },
       token,
     });
   } catch (err) {
@@ -227,6 +239,45 @@ export const getAdminTerms = async (req, res) => {
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
     res.json({ terms: admin.termsAndConditions || [] });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get Admin Profile
+export const getAdminProfile = async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.admin.id);
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+    res.json({
+      admin: {
+        adminId: admin.adminId,
+        name: admin.name,
+        email: admin.email,
+        shopId: admin.shopId,
+        shopName: admin.shopName,
+        mobile: admin.mobile,
+        profilePhoto: admin.profilePhoto,
+        needsProfileSetup: admin.needsProfileSetup,
+        id: admin._id,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Delete Admin Account
+export const deleteAdmin = async (req, res) => {
+  try {
+    const adminId = req.admin.id;
+    // Delete subscription
+    await AdminSubscription.deleteMany({ adminId });
+    // Delete admin
+    const admin = await Admin.findByIdAndDelete(adminId);
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    res.json({ message: "Account deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

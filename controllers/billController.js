@@ -17,7 +17,7 @@ export const uploadBill = async (req, res) => {
       return res.status(400).json({ message: "Valid amount is required" });
     }
 
-    const billImage = req.file.path;
+    const billImage = `/uploads/bills/${req.file.filename}`;
 
     const bill = await Bill.create({
       userId: req.user.sub,
