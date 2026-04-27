@@ -160,10 +160,16 @@ export const sendNotification = async (req, res) => {
 // Admin: Get own notifications
 export const getAdminNotifications = async (req, res) => {
   try {
+    const admin = await Admin.findById(req.admin.id);
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
     const notifications = await Notification.find({
       $or: [
         { recipientId: req.admin.id, recipientType: "admin" },
-        { recipientType: "all_admins" }
+        { 
+          recipientType: "all_admins",
+          createdAt: { $gte: admin.createdAt }
+        }
       ]
     })
       .sort({ createdAt: -1 })
@@ -172,7 +178,10 @@ export const getAdminNotifications = async (req, res) => {
     const unreadCount = await Notification.countDocuments({
       $or: [
         { recipientId: req.admin.id, recipientType: "admin" },
-        { recipientType: "all_admins" }
+        { 
+          recipientType: "all_admins",
+          createdAt: { $gte: admin.createdAt }
+        }
       ],
       isRead: false
     });
@@ -192,8 +201,13 @@ export const getUserNotifications = async (req, res) => {
     const notifications = await Notification.find({
       $or: [
         { recipientId: req.user.sub, recipientType: "user" },
-        { shopId: user.shopId, recipientType: "user" },
-        { recipientType: "all_users" }
+        { 
+          $or: [
+            { shopId: user.shopId, recipientType: "user" },
+            { recipientType: "all_users" }
+          ],
+          createdAt: { $gte: user.createdAt }
+        }
       ]
     })
       .populate("metadata.rewardId", "rewardName rewardImages pointsRequired")
@@ -203,8 +217,13 @@ export const getUserNotifications = async (req, res) => {
     const unreadCount = await Notification.countDocuments({
       $or: [
         { recipientId: req.user.sub, recipientType: "user" },
-        { shopId: user.shopId, recipientType: "user" },
-        { recipientType: "all_users" }
+        { 
+          $or: [
+            { shopId: user.shopId, recipientType: "user" },
+            { recipientType: "all_users" }
+          ],
+          createdAt: { $gte: user.createdAt }
+        }
       ],
       isRead: false
     });
