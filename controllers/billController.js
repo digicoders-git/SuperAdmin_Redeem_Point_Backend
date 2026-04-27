@@ -286,14 +286,19 @@ export const setPointConfiguration = async (req, res) => {
       return res.status(400).json({ message: "amountPerPoint must be greater than 0" });
     }
 
-    // Update or create point setting for current admin
-    await PointSetting.updateMany({ adminId: req.admin.id }, { isActive: false });
-
-    const pointSetting = await PointSetting.create({
-      amountPerPoint,
-      adminId: req.admin.id,
-      isActive: true,
-    });
+    // First, check if point setting exists
+    let pointSetting = await PointSetting.findOne({ adminId: req.admin.id, isActive: true });
+    
+    if (!pointSetting) {
+      pointSetting = await PointSetting.create({
+        adminId: req.admin.id,
+        amountPerPoint,
+        isActive: true,
+      });
+    } else {
+      pointSetting.amountPerPoint = amountPerPoint;
+      await pointSetting.save();
+    }
 
     res.json({
       message: "Point configuration updated successfully",

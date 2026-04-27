@@ -272,8 +272,9 @@ export const claimFreeTrial = async (req, res) => {
     
     console.log("settings:", settings);
 
+    const days = settings?.freeTrialDays ?? 7;
     const endDate = new Date();
-    endDate.setFullYear(endDate.getFullYear() + 1);
+    endDate.setDate(endDate.getDate() + days);
 
     const subscription = await AdminSubscription.create({
       adminId: req.admin.id,

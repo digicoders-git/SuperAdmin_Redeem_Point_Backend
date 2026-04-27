@@ -7,6 +7,7 @@ import User from "../models/User.js";
 import Bill from "../models/Bill.js";
 import Redemption from "../models/Redemption.js";
 import Reward from "../models/Reward.js";
+import SystemSettings from "../models/SystemSettings.js";
 
 const signJwt = (sa) =>
   jwt.sign({ sub: String(sa._id), username: sa.username, tv: sa.tokenVersion, role: "superadmin" }, process.env.JWT_SECRET);
@@ -126,10 +127,13 @@ export const createAdmin = async (req, res) => {
       referralCode,
     });
 
-    // Auto-assign 1 year free trial
+    // Auto-assign free trial based on SystemSettings
     try {
+      const settings = await SystemSettings.findOne();
+      const days = settings?.freeTrialDays ?? 7;
       const endDate = new Date();
-      endDate.setFullYear(endDate.getFullYear() + 1);
+      endDate.setDate(endDate.getDate() + days);
+
       const AdminSubscription = (await import("../models/AdminSubscription.js")).default;
       await AdminSubscription.create({
         adminId: admin._id,
