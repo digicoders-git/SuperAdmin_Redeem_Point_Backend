@@ -130,7 +130,7 @@ export const createAdmin = async (req, res) => {
     // Auto-assign free trial based on SystemSettings
     try {
       const settings = await SystemSettings.findOne();
-      const days = settings?.freeTrialDays ?? 7;
+      const days = settings?.freeTrialDays ?? 14;
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + days);
 

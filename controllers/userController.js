@@ -17,7 +17,7 @@ export const registerUser = async (req, res) => {
     const exists = await User.findOne({ email: email.toLowerCase(), shopId: shopId || "" });
     if (exists) return res.status(409).json({ message: "Already registered with this shop" });
 
-    const user = await User.create({ name, email: email.toLowerCase(), password, mobile: "", shopId: shopId || "" });
+    const user = await User.create({ name, email: email.toLowerCase(), password, mobile: "", shopId: shopId || "", needsProfileSetup: true });
 
     const token = jwt.sign(
       { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },
@@ -61,6 +61,7 @@ export const loginUser = async (req, res) => {
         password,
         mobile: "",
         shopId: shopId || "",
+        needsProfileSetup: true,
       });
       const token = jwt.sign(
         { sub: newUser._id, mobile: "", tv: newUser.tokenVersion },
@@ -95,6 +96,7 @@ export const loginUser = async (req, res) => {
           password,
           mobile: "",
           shopId,
+          needsProfileSetup: true,
         });
       }
       if (!shopAccount.isActive) return res.status(403).json({ message: "Your account has been deactivated by this shop owner." });
@@ -230,7 +232,7 @@ export const getProfile = async (req, res) => {
       if (admin) shopName = admin.name;
     }
     
-    res.json({ user: { ...user.toObject(), shopName } });
+    res.json({ user: { ...user.toObject(), shopName, needsProfileSetup: user.needsProfileSetup } });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -239,12 +241,13 @@ export const getProfile = async (req, res) => {
 // Update Profile
 export const updateProfile = async (req, res) => {
   try {
-    const { name, mobile, profilePhoto } = req.body;
+    const { name, mobile, profilePhoto, needsProfileSetup } = req.body;
     const updates = {};
 
     if (name) updates.name = name;
     if (mobile) updates.mobile = mobile;
     if (profilePhoto !== undefined) updates.profilePhoto = profilePhoto;
+    if (needsProfileSetup !== undefined) updates.needsProfileSetup = needsProfileSetup;
 
     const user = await User.findByIdAndUpdate(req.user.sub, updates, {
       new: true,
@@ -502,6 +505,7 @@ export const googleLogin = async (req, res) => {
         email: emailLower,
         mobile: "",
         shopId: shopId || "",
+        needsProfileSetup: true,
       });
     } else {
       if (!user.isActive) return res.status(403).json({ message: "Your account has been deactivated by this shop owner." });
@@ -524,7 +528,7 @@ export const googleLogin = async (req, res) => {
 
     res.json({
       message: "Login successful",
-      user: { id: user._id, name: user.name, email: user.email, shopId: user.shopId, shopName },
+      user: { id: user._id, name: user.name, email: user.email, shopId: user.shopId, shopName, needsProfileSetup: user.needsProfileSetup },
       token,
       multipleShops,
     });

@@ -16,7 +16,7 @@ export const getSystemSettings = async (req, res) => {
   try {
     let settings = await SystemSettings.findOne();
     if (!settings) {
-      settings = await SystemSettings.create({ freeTrialDays: 7 });
+      settings = await SystemSettings.create({ freeTrialDays: 14 });
     }
     res.json({ settings });
   } catch (err) { res.status(500).json({ message: err.message }); }
@@ -267,12 +267,12 @@ export const claimFreeTrial = async (req, res) => {
 
     let settings = await SystemSettings.findOne();
     if (!settings) {
-      settings = await SystemSettings.create({ freeTrialDays: 7 });
+      settings = await SystemSettings.create({ freeTrialDays: 14 });
     }
     
     console.log("settings:", settings);
 
-    const days = settings?.freeTrialDays ?? 7;
+    const days = settings?.freeTrialDays ?? 14;
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + days);
 

@@ -22,13 +22,13 @@ const signJwt = (admin) =>
 const getTrialEndDate = async () => {
   try {
     const settings = await SystemSettings.findOne();
-    const days = settings?.freeTrialDays ?? 7;
+    const days = settings?.freeTrialDays ?? 14;
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + days);
     return endDate;
   } catch (_) {
     const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 7);
+    endDate.setDate(endDate.getDate() + 14);
     return endDate;
   }
 };

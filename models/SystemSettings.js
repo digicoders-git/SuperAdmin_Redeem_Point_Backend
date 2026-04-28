@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const systemSettingsSchema = new mongoose.Schema(
   {
-    freeTrialDays: { type: Number, default: 7, min: 0 },
+    freeTrialDays: { type: Number, default: 14, min: 0 },
     supportPhone: { type: String, default: "" },
   },
   { timestamps: true }

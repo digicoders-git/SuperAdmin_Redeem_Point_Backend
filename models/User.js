@@ -47,6 +47,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    needsProfileSetup: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );
