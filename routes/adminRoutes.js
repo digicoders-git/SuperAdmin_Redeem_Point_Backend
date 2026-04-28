@@ -67,6 +67,7 @@ router.post("/logout-all", authenticateAdmin, logoutAll);
 router.patch("/change-password", authenticateAdmin, changeAdminPassword);
 router.get("/profile", authenticateAdmin, getAdminProfile);
 router.put("/profile", authenticateAdmin, updateAdminProfile);
+router.put("/update-profile", authenticateAdmin, updateAdminProfile);
 router.delete("/profile", authenticateAdmin, deleteAdmin);
 router.put("/update-fcm-token", authenticateAdmin, updateAdminFCMToken);
 router.post("/profile/photo", authenticateAdmin, upload.single("profilePhoto"), uploadAdminProfilePhoto);
