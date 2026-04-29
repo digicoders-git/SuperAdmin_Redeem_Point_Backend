@@ -155,12 +155,16 @@ export const createAdmin = async (req, res) => {
   }
 };
 
-// Delete admin
-export const deleteAdmin = async (req, res) => {
+// Toggle admin status (Activate/Deactivate)
+export const toggleAdminStatus = async (req, res) => {
   try {
-    const admin = await Admin.findByIdAndDelete(req.params.id);
+    const admin = await Admin.findById(req.params.id);
     if (!admin) return res.status(404).json({ message: "Admin not found" });
-    res.json({ message: "Admin deleted" });
+    
+    admin.isActive = !admin.isActive;
+    await admin.save();
+    
+    res.json({ message: `Admin ${admin.isActive ? "activated" : "deactivated"}`, isActive: admin.isActive });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

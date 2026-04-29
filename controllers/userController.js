@@ -434,6 +434,7 @@ export const addPointsToUser = async (req, res) => {
       billImage: "manual_adjustment",
       status: "approved",
       pointsEarned: Number(points),
+      adminNote: reason || "Manual adjustment by admin",
       approvedBy: req.admin.id,
       approvedAt: new Date(),
     });

@@ -29,6 +29,10 @@ const billSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    adminNote: {
+      type: String,
+      default: "",
+    },
     approvedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",

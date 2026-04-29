@@ -125,6 +125,7 @@ export const loginAdmin = async (req, res) => {
       if (!ok) return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    if (admin.isActive === false) return res.status(403).json({ message: "Account is deactivated. Contact support." });
     const token = signJwt(admin);
     res.json({
       message: "Login successful",
@@ -167,6 +168,7 @@ export const googleLoginAdmin = async (req, res) => {
       admin = await Admin.findOne({ email: googleUserInfo.email.toLowerCase() }).select("+tokenVersion");
     }
 
+    if (admin.isActive === false) return res.status(403).json({ message: "Account is deactivated. Contact support." });
     const token = signJwt(admin);
     res.json({
       message: "Login successful",
@@ -267,17 +269,14 @@ export const getAdminProfile = async (req, res) => {
   }
 };
 
-// Delete Admin Account
+// Deactivate Admin Account
 export const deleteAdmin = async (req, res) => {
   try {
     const adminId = req.admin.id;
-    // Delete subscription
-    await AdminSubscription.deleteMany({ adminId });
-    // Delete admin
-    const admin = await Admin.findByIdAndDelete(adminId);
+    const admin = await Admin.findByIdAndUpdate(adminId, { isActive: false }, { new: true });
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-    res.json({ message: "Account deleted successfully" });
+    res.json({ message: "Account deactivated successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

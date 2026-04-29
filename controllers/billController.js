@@ -109,12 +109,12 @@ export const getBillDetail = async (req, res) => {
   }
 };
 
-// Admin: Edit Bill Amount (any status) + notify user
+// Admin: Edit Bill (Amount/Points) + notify user
 export const editBillAmount = async (req, res) => {
   try {
-    const { amount, editReason } = req.body;
+    const { amount, pointsEarned, editReason } = req.body;
 
-    if (!amount || amount <= 0) {
+    if (amount !== undefined && (isNaN(amount) || amount < 0)) {
       return res.status(400).json({ message: "Valid amount is required" });
     }
     if (!editReason?.trim()) {
@@ -124,32 +124,53 @@ export const editBillAmount = async (req, res) => {
     const bill = await Bill.findById(req.params.id);
     if (!bill) return res.status(404).json({ message: "Bill not found" });
 
+    const user = await User.findById(bill.userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
     const oldAmount = bill.amount;
-    bill.amount = amount;
+    const oldPoints = bill.pointsEarned || 0;
+
+    if (amount !== undefined) bill.amount = Number(amount);
+    
+    let newPoints = oldPoints;
+    if (pointsEarned !== undefined) {
+      newPoints = Number(pointsEarned);
+    } else if (bill.status === "approved" && amount !== undefined) {
+       // Recalculate based on current config if amount changed
+       let pointSetting = await PointSetting.findOne({ adminId: req.admin.id, isActive: true });
+       const amountPerPoint = pointSetting ? pointSetting.amountPerPoint : 100;
+       newPoints = Math.floor(bill.amount / amountPerPoint);
+    }
+
+    if (bill.status === "approved" && newPoints !== oldPoints) {
+      const diff = newPoints - oldPoints;
+      user.walletPoints = (user.walletPoints || 0) + diff;
+      await user.save();
+    }
+
+    bill.pointsEarned = newPoints;
+    bill.adminNote = editReason;
     await bill.save();
 
     // Notify user
-    const user = await User.findById(bill.userId);
-    if (user) {
-      if (user.fcmToken) {
-        await sendPushNotification(
-          user.fcmToken,
-          "📝 Bill Amount Updated",
-          `Your bill amount was updated from ₹${oldAmount} to ₹${amount}. Reason: ${editReason}`
-        );
-      }
-      await Notification.create({
-        recipientType: "user",
-        recipientId: bill.userId,
-        recipientModel: "User",
-        shopId: req.admin.shopId,
-        title: "📝 Bill Amount Updated",
-        message: `Your bill amount was updated from ₹${oldAmount} to ₹${amount}. Reason: ${editReason}`,
-        type: "system",
-      });
+    if (user.fcmToken) {
+      await sendPushNotification(
+        user.fcmToken,
+        "📝 Bill Updated",
+        `Your bill details were updated by the admin. Reason: ${editReason}`
+      );
     }
+    await Notification.create({
+      recipientType: "user",
+      recipientId: bill.userId,
+      recipientModel: "User",
+      shopId: req.admin.shopId,
+      title: "📝 Bill Updated",
+      message: `Admin updated your bill. Reason: ${editReason}`,
+      type: "system",
+    });
 
-    res.json({ message: "Bill amount updated successfully", bill });
+    res.json({ message: "Bill updated successfully", bill });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -15,6 +15,7 @@ const adminSchema = new mongoose.Schema(
     tokenVersion: { type: Number, default: 0, select: false },
     termsAndConditions: [{ type: String }],
     fcmToken: { type: String, default: null },
+    isActive: { type: Boolean, default: true },
 
     // IST timestamps
     createdAtIST: { type: String },

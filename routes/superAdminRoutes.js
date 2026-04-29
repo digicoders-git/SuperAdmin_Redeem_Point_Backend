@@ -5,7 +5,7 @@ import {
   getAllAdmins,
   getAdminDetail,
   createAdmin,
-  deleteAdmin,
+  toggleAdminStatus,
   getAllUsers,
   getAllRewards,
   getAllBills,
@@ -22,7 +22,7 @@ router.get("/dashboard", authenticateSuperAdmin, getDashboardStats);
 router.get("/admins", authenticateSuperAdmin, getAllAdmins);
 router.get("/admins/:id", authenticateSuperAdmin, getAdminDetail);
 router.post("/admins", authenticateSuperAdmin, createAdmin);
-router.delete("/admins/:id", authenticateSuperAdmin, deleteAdmin);
+router.patch("/admins/:id/toggle", authenticateSuperAdmin, toggleAdminStatus);
 router.get("/users", authenticateSuperAdmin, getAllUsers);
 router.get("/rewards", authenticateSuperAdmin, getAllRewards);
 router.get("/bills", authenticateSuperAdmin, getAllBills);
