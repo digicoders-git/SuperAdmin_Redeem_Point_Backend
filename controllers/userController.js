@@ -27,8 +27,8 @@ export const registerUser = async (req, res) => {
 
     let shopName = "Inaamify";
     if (user.shopId) {
-      const admin = await Admin.findOne({ shopId: user.shopId }).select("name");
-      if (admin) shopName = admin.name;
+      const admin = await Admin.findOne({ shopId: user.shopId }).select("shopName name");
+      if (admin) shopName = admin.shopName || admin.name;
     }
 
     res.status(201).json({
@@ -70,8 +70,8 @@ export const loginUser = async (req, res) => {
       );
       let shopName = "Inaamify";
       if (newUser.shopId) {
-        const admin = await Admin.findOne({ shopId: newUser.shopId }).select("name");
-        if (admin) shopName = admin.name;
+        const admin = await Admin.findOne({ shopId: newUser.shopId }).select("shopName name");
+        if (admin) shopName = admin.shopName || admin.name;
       }
       return res.json({
         message: "Login successful",
@@ -106,10 +106,10 @@ export const loginUser = async (req, res) => {
         process.env.JWT_SECRET,
         { expiresIn: "30d" }
       );
-      const admin = await Admin.findOne({ shopId }).select("name");
+      const admin = await Admin.findOne({ shopId }).select("shopName name");
       return res.json({
         message: "Login successful",
-        user: { id: shopAccount._id, name: shopAccount.name, email: shopAccount.email, shopId: shopAccount.shopId, shopName: admin?.name || "Inaamify" },
+        user: { id: shopAccount._id, name: shopAccount.name, email: shopAccount.email, shopId: shopAccount.shopId, shopName: admin?.shopName || admin?.name || "Inaamify" },
         token,
         multipleShops: allAccounts.length > 1,
       });
@@ -124,10 +124,10 @@ export const loginUser = async (req, res) => {
         process.env.JWT_SECRET,
         { expiresIn: "30d" }
       );
-      const admin = await Admin.findOne({ shopId: firstUser.shopId }).select("name");
+      const admin = await Admin.findOne({ shopId: firstUser.shopId }).select("shopName name");
       return res.json({
         message: "Login successful",
-        user: { id: firstUser._id, name: firstUser.name, email: firstUser.email, shopId: firstUser.shopId, shopName: admin?.name || "Inaamify" },
+        user: { id: firstUser._id, name: firstUser.name, email: firstUser.email, shopId: firstUser.shopId, shopName: admin?.shopName || admin?.name || "Inaamify" },
         token,
         multipleShops: true,
       });
@@ -136,15 +136,22 @@ export const loginUser = async (req, res) => {
     // Single account
     const user = allAccounts[0];
     if (!user.isActive) return res.status(403).json({ message: "Your account has been deactivated by this shop owner." });
+
+    // Auto-fix setup flag if details already exist
+    if (user.needsProfileSetup && user.name && user.mobile) {
+      user.needsProfileSetup = false;
+      await user.save();
+    }
+
     const token = jwt.sign(
-      { sub: user._id, mobile: "", tv: user.tokenVersion },
+      { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },
       process.env.JWT_SECRET,
       { expiresIn: "30d" }
     );
-    const admin = user.shopId ? await Admin.findOne({ shopId: user.shopId }).select("name") : null;
+    const admin = user.shopId ? await Admin.findOne({ shopId: user.shopId }).select("shopName name") : null;
     return res.json({
       message: "Login successful",
-      user: { id: user._id, name: user.name, email: user.email, shopId: user.shopId, shopName: admin?.name || "Inaamify" },
+      user: { id: user._id, name: user.name, email: user.email, shopId: user.shopId, shopName: admin?.shopName || admin?.name || "Inaamify", needsProfileSetup: user.needsProfileSetup },
       token,
       multipleShops: false,
     });
@@ -166,12 +173,12 @@ export const getUserShops = async (req, res) => {
 
     const shopsWithDetails = await Promise.all(
       users.map(async (u) => {
-        const admin = await Admin.findOne({ shopId: u.shopId }).select("name shopId adminId");
+        const admin = await Admin.findOne({ shopId: u.shopId }).select("shopName name shopId adminId");
         return {
           userId: u._id,
           shopId: u.shopId,
           registeredAt: u.createdAt,
-          adminName: admin?.name || "Unknown Shop",
+          adminName: admin?.shopName || admin?.name || "Unknown Shop",
           adminId: admin?.adminId || "",
         };
       })
@@ -203,8 +210,8 @@ export const switchShop = async (req, res) => {
 
     let shopName = "Inaamify";
     if (targetUser.shopId) {
-      const admin = await Admin.findOne({ shopId: targetUser.shopId }).select("name");
-      if (admin) shopName = admin.name;
+      const admin = await Admin.findOne({ shopId: targetUser.shopId }).select("shopName name");
+      if (admin) shopName = admin.shopName || admin.name;
     }
 
     res.json({
@@ -228,8 +235,8 @@ export const getProfile = async (req, res) => {
     // Fetch shop name
     let shopName = "CS Partner App";
     if (user.shopId) {
-      const admin = await Admin.findOne({ shopId: user.shopId }).select("name");
-      if (admin) shopName = admin.name;
+      const admin = await Admin.findOne({ shopId: user.shopId }).select("shopName name");
+      if (admin) shopName = admin.shopName || admin.name;
     }
     
     res.json({ user: { ...user.toObject(), shopName, needsProfileSetup: user.needsProfileSetup } });
@@ -247,7 +254,16 @@ export const updateProfile = async (req, res) => {
     if (name) updates.name = name;
     if (mobile) updates.mobile = mobile;
     if (profilePhoto !== undefined) updates.profilePhoto = profilePhoto;
-    if (needsProfileSetup !== undefined) updates.needsProfileSetup = needsProfileSetup;
+    
+    if (needsProfileSetup !== undefined) {
+      updates.needsProfileSetup = needsProfileSetup;
+    } else if (name || mobile) {
+      // Fetch user to check current state if not all info in updates
+      const user = await User.findById(req.user.sub);
+      const finalName = name || user.name;
+      const finalMobile = mobile || user.mobile;
+      updates.needsProfileSetup = !(finalName && finalMobile);
+    }
 
     const user = await User.findByIdAndUpdate(req.user.sub, updates, {
       new: true,
@@ -512,6 +528,12 @@ export const googleLogin = async (req, res) => {
       if (!user.isActive) return res.status(403).json({ message: "Your account has been deactivated by this shop owner." });
     }
 
+    // Auto-fix setup flag if details already exist
+    if (user.needsProfileSetup && user.name && user.mobile) {
+      user.needsProfileSetup = false;
+      await user.save();
+    }
+
     const allAccounts = await User.find({ email: emailLower });
     const multipleShops = allAccounts.filter(u => u.shopId).length > 1;
 
@@ -523,8 +545,8 @@ export const googleLogin = async (req, res) => {
 
     let shopName = "Inaamify";
     if (user.shopId) {
-      const admin = await Admin.findOne({ shopId: user.shopId }).select("name");
-      if (admin) shopName = admin.name;
+      const admin = await Admin.findOne({ shopId: user.shopId }).select("shopName name");
+      if (admin) shopName = admin.shopName || admin.name;
     }
 
     res.json({

@@ -42,8 +42,23 @@ export const registerAdmin = async (req, res) => {
     if (password.length < 6)
       return res.status(400).json({ message: "Password must be at least 6 characters" });
 
-    const exists = await Admin.findOne({ email: email.toLowerCase() });
-    if (exists) return res.status(409).json({ message: "Email already registered" });
+    const emailExists = await Admin.findOne({ 
+      $or: [
+        { email: email.toLowerCase() },
+        { adminId: email.toLowerCase() }
+      ]
+    });
+    if (emailExists) return res.status(409).json({ message: "Email or Admin ID already registered" });
+
+    if (mobile) {
+      const mobileExists = await Admin.findOne({
+        $or: [
+          { mobile: mobile },
+          { adminId: mobile }
+        ]
+      });
+      if (mobileExists) return res.status(409).json({ message: "Mobile number already registered" });
+    }
 
     const shopId = "SHOP-" + nanoid(8).toUpperCase();
     const referralCode = "REF-" + nanoid(8).toUpperCase();
@@ -100,6 +115,14 @@ export const loginAdmin = async (req, res) => {
       const shopId = "SHOP-" + nanoid(8).toUpperCase();
       const referralCode = "REF-" + nanoid(8).toUpperCase();
       const hash = await bcrypt.hash(password, SALT_ROUNDS);
+      const emailExists = await Admin.findOne({ 
+        $or: [
+          { email: email.toLowerCase() },
+          { adminId: email.toLowerCase() }
+        ]
+      });
+      if (emailExists) return res.status(409).json({ message: "Email or Admin ID already registered" });
+
       admin = await Admin.create({
         adminId: email.toLowerCase(),
         email: email.toLowerCase(),
@@ -127,8 +150,13 @@ export const loginAdmin = async (req, res) => {
 
     if (admin.isActive === false) return res.status(403).json({ message: "Account is deactivated. Contact support." });
     // Auto-fix setup flag if details already exist
-    if (admin.needsProfileSetup && admin.name && admin.mobile && admin.shopName) {
+    const hasAllDetails = admin.name && admin.mobile && admin.shopName;
+    if (admin.needsProfileSetup && hasAllDetails) {
       admin.needsProfileSetup = false;
+      await admin.save();
+    } else if (!admin.needsProfileSetup && !hasAllDetails) {
+      // Re-enable setup if details were somehow cleared
+      admin.needsProfileSetup = true;
       await admin.save();
     }
     const token = signJwt(admin);
@@ -155,6 +183,14 @@ export const googleLoginAdmin = async (req, res) => {
       // Auto-create new admin
       const shopId = "SHOP-" + nanoid(8).toUpperCase();
       const referralCode = "REF-" + nanoid(8).toUpperCase();
+      const emailExists = await Admin.findOne({ 
+        $or: [
+          { email: googleUserInfo.email.toLowerCase() },
+          { adminId: googleUserInfo.email.toLowerCase() }
+        ]
+      });
+      if (emailExists) return res.status(409).json({ message: "Email or Admin ID already registered" });
+
       admin = await Admin.create({
         adminId: googleUserInfo.email.toLowerCase(),
         email: googleUserInfo.email.toLowerCase(),
@@ -176,8 +212,12 @@ export const googleLoginAdmin = async (req, res) => {
 
     if (admin.isActive === false) return res.status(403).json({ message: "Account is deactivated. Contact support." });
     // Auto-fix setup flag if details already exist
-    if (admin.needsProfileSetup && admin.name && admin.mobile && admin.shopName) {
+    const hasAllDetails = admin.name && admin.mobile && admin.shopName;
+    if (admin.needsProfileSetup && hasAllDetails) {
       admin.needsProfileSetup = false;
+      await admin.save();
+    } else if (!admin.needsProfileSetup && !hasAllDetails) {
+      admin.needsProfileSetup = true;
       await admin.save();
     }
     const token = signJwt(admin);
@@ -326,17 +366,25 @@ export const updateAdminProfile = async (req, res) => {
 
     if (name) admin.name = name;
     if (mobile) {
+      // Check if mobile is already in use by another admin
+      const existingMobile = await Admin.findOne({
+        $or: [{ mobile: mobile }, { adminId: mobile }],
+        _id: { $ne: admin._id }
+      });
+      if (existingMobile) {
+        return res.status(400).json({ message: "Mobile number already in use" });
+      }
       admin.mobile = mobile;
       admin.adminId = mobile;
     }
     if (shopName) admin.shopName = shopName;
     
-    // Auto-complete setup if all required fields are present
-    if (admin.name && admin.mobile && admin.shopName) {
-      admin.needsProfileSetup = false;
+    if (needsProfileSetup !== undefined) {
+      admin.needsProfileSetup = needsProfileSetup;
+    } else {
+      // Auto-recalculate if not explicitly provided
+      admin.needsProfileSetup = !(admin.name && admin.mobile && admin.shopName);
     }
-    
-    if (needsProfileSetup !== undefined) admin.needsProfileSetup = needsProfileSetup;
     
     await admin.save();
 
