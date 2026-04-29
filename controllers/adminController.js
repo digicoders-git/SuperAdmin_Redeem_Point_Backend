@@ -126,7 +126,13 @@ export const loginAdmin = async (req, res) => {
     }
 
     if (admin.isActive === false) return res.status(403).json({ message: "Account is deactivated. Contact support." });
+    // Auto-fix setup flag if details already exist
+    if (admin.needsProfileSetup && admin.name && admin.mobile && admin.shopName) {
+      admin.needsProfileSetup = false;
+      await admin.save();
+    }
     const token = signJwt(admin);
+
     res.json({
       message: "Login successful",
       admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, shopName: admin.shopName, mobile: admin.mobile, needsProfileSetup: admin.needsProfileSetup, id: admin._id },
@@ -169,7 +175,13 @@ export const googleLoginAdmin = async (req, res) => {
     }
 
     if (admin.isActive === false) return res.status(403).json({ message: "Account is deactivated. Contact support." });
+    // Auto-fix setup flag if details already exist
+    if (admin.needsProfileSetup && admin.name && admin.mobile && admin.shopName) {
+      admin.needsProfileSetup = false;
+      await admin.save();
+    }
     const token = signJwt(admin);
+
     res.json({
       message: "Login successful",
       admin: { adminId: admin.adminId, email: admin.email, name: admin.name, shopId: admin.shopId, shopName: admin.shopName, mobile: admin.mobile, needsProfileSetup: admin.needsProfileSetup, id: admin._id },
@@ -318,6 +330,12 @@ export const updateAdminProfile = async (req, res) => {
       admin.adminId = mobile;
     }
     if (shopName) admin.shopName = shopName;
+    
+    // Auto-complete setup if all required fields are present
+    if (admin.name && admin.mobile && admin.shopName) {
+      admin.needsProfileSetup = false;
+    }
+    
     if (needsProfileSetup !== undefined) admin.needsProfileSetup = needsProfileSetup;
     
     await admin.save();
