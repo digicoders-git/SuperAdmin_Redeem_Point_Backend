@@ -95,9 +95,9 @@ export const getAdminDetail = async (req, res) => {
     const users = await User.find({ shopId: admin.shopId }).select("-password").sort({ createdAt: -1 });
     const userIds = users.map(u => u._id);
 
-    const bills = await Bill.find({ userId: { $in: userIds } }).populate("userId", "name mobile").sort({ createdAt: -1 }).limit(100);
-    const rewards = await Reward.find({ adminId: admin._id }).sort({ createdAt: -1 });
-    const redemptions = await Redemption.find({ userId: { $in: userIds } }).populate("userId", "name mobile").populate("rewardId", "rewardName").sort({ createdAt: -1 }).limit(100);
+    const bills = await Bill.find({ userId: { $in: userIds } }).populate("userId", "name mobile").sort({ createdAt: -1 }).limit(100).lean();
+    const rewards = await Reward.find({ adminId: admin._id }).sort({ createdAt: -1 }).lean();
+    const redemptions = await Redemption.find({ userId: { $in: userIds } }).populate("userId", "name mobile").populate("rewardId", "rewardName").sort({ createdAt: -1 }).limit(100).lean();
 
     res.json({ admin, users, bills, rewards, redemptions });
   } catch (err) {
