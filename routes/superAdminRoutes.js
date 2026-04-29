@@ -10,6 +10,7 @@ import {
   getAllRewards,
   getAllBills,
   getAllRedemptions,
+  getUserBills,
   changeSuperAdminPassword,
 } from "../controllers/superAdminController.js";
 import { authenticateSuperAdmin } from "../middleware/superAdminAuth.js";
@@ -24,6 +25,7 @@ router.get("/admins/:id", authenticateSuperAdmin, getAdminDetail);
 router.post("/admins", authenticateSuperAdmin, createAdmin);
 router.patch("/admins/:id/toggle", authenticateSuperAdmin, toggleAdminStatus);
 router.get("/users", authenticateSuperAdmin, getAllUsers);
+router.get("/users/:userId/bills", authenticateSuperAdmin, getUserBills);
 router.get("/rewards", authenticateSuperAdmin, getAllRewards);
 router.get("/bills", authenticateSuperAdmin, getAllBills);
 router.get("/redemptions", authenticateSuperAdmin, getAllRedemptions);

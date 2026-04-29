@@ -224,6 +224,16 @@ export const getAllRedemptions = async (req, res) => {
   }
 };
 
+// Get user bills
+export const getUserBills = async (req, res) => {
+  try {
+    const bills = await Bill.find({ userId: req.params.userId }).sort({ createdAt: -1 });
+    res.json({ bills });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Change superadmin password
 export const changeSuperAdminPassword = async (req, res) => {
   try {
