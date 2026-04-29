@@ -41,6 +41,12 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Serve static files (uploads) - allow cross-origin access
 app.use("/uploads", (req, res, next) => {
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  // Legacy Cloudinary path fix
+  if (req.url.includes("redeem_") || req.url.includes("bills/redeem_")) {
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "dcqvgr7fl";
+    const cleanUrl = req.url.replace(/^\/(bills\/|admin-photos\/|rewards\/)?/, "");
+    return res.redirect(`https://res.cloudinary.com/${cloudName}/image/upload/${cleanUrl}`);
+  }
   next();
 }, express.static("uploads"));
 
