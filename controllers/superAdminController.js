@@ -181,6 +181,16 @@ export const toggleAdminStatus = async (req, res) => {
 // Delete Admin permanently
 export const deleteAdmin = async (req, res) => {
   try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ message: "SuperAdmin password is required" });
+
+    // Verify SuperAdmin password
+    const sa = await SuperAdmin.findById(req.superAdmin.id).select("+password");
+    if (!sa) return res.status(404).json({ message: "SuperAdmin not found" });
+
+    const isMatch = await bcrypt.compare(password, sa.password);
+    if (!isMatch) return res.status(401).json({ message: "Invalid SuperAdmin password" });
+
     const adminId = req.params.id;
     const admin = await Admin.findById(adminId);
     if (!admin) return res.status(404).json({ message: "Admin not found" });

@@ -231,14 +231,14 @@ export const getProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    
+
     // Fetch shop name
-    let shopName = "CS Partner App";
+    let shopName = "Inaamify";
     if (user.shopId) {
       const admin = await Admin.findOne({ shopId: user.shopId }).select("shopName name");
       if (admin) shopName = admin.shopName || admin.name;
     }
-    
+
     res.json({ user: { ...user.toObject(), shopName, needsProfileSetup: user.needsProfileSetup } });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -254,7 +254,7 @@ export const updateProfile = async (req, res) => {
     if (name) updates.name = name;
     if (mobile) updates.mobile = mobile;
     if (profilePhoto !== undefined) updates.profilePhoto = profilePhoto;
-    
+
     if (needsProfileSetup !== undefined) {
       updates.needsProfileSetup = needsProfileSetup;
     } else if (name || mobile) {
@@ -565,10 +565,10 @@ export const getShopPublicInfo = async (req, res) => {
   try {
     const { shopId } = req.params;
     if (!shopId) return res.status(400).json({ message: "Shop ID is required" });
-    
+
     const admin = await Admin.findOne({ shopId }).select("shopName name");
     if (!admin) return res.status(404).json({ message: "Shop not found" });
-    
+
     res.json({ shopName: admin.shopName || admin.name });
   } catch (error) {
     res.status(500).json({ message: error.message });

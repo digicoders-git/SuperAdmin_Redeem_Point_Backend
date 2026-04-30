@@ -105,14 +105,20 @@ export const registerAdmin = async (req, res) => {
   }
 };
 
-// Login or Auto-Register Admin (email + password)
+// Login or Auto-Register Admin (email/mobile + password)
 export const loginAdmin = async (req, res) => {
   try {
     const { email, password, name } = req.body;
     if (!email || !password)
-      return res.status(400).json({ message: "email and password are required" });
+      return res.status(400).json({ message: "email/mobile and password are required" });
 
-    let admin = await Admin.findOne({ email: email.toLowerCase() }).select("+password +tokenVersion");
+    let admin = await Admin.findOne({
+      $or: [
+        { email: email.toLowerCase() },
+        { adminId: email.toLowerCase() },
+        { mobile: email }
+      ]
+    }).select("+password +tokenVersion");
 
     if (!admin) {
       // Auto-create new admin
