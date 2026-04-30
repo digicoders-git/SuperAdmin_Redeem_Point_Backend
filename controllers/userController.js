@@ -566,10 +566,10 @@ export const getShopPublicInfo = async (req, res) => {
     const { shopId } = req.params;
     if (!shopId) return res.status(400).json({ message: "Shop ID is required" });
     
-    const admin = await Admin.findOne({ shopId }).select("name");
+    const admin = await Admin.findOne({ shopId }).select("shopName name");
     if (!admin) return res.status(404).json({ message: "Shop not found" });
     
-    res.json({ shopName: admin.name });
+    res.json({ shopName: admin.shopName || admin.name });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

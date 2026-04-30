@@ -4,6 +4,10 @@ import { nanoid } from "nanoid";
 import Admin from "../models/Admin.js";
 import AdminSubscription from "../models/AdminSubscription.js";
 import SystemSettings from "../models/SystemSettings.js";
+import Reward from "../models/Reward.js";
+import User from "../models/User.js";
+import Bill from "../models/Bill.js";
+import Redemption from "../models/Redemption.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS || "12", 10);
@@ -321,14 +325,24 @@ export const getAdminProfile = async (req, res) => {
   }
 };
 
-// Deactivate Admin Account
+// Delete Admin Account permanently
 export const deleteAdmin = async (req, res) => {
   try {
     const adminId = req.admin.id;
-    const admin = await Admin.findByIdAndUpdate(adminId, { isActive: false }, { new: true });
+    const admin = await Admin.findById(adminId);
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-    res.json({ message: "Account deactivated successfully" });
+    // Cleanup associated data
+    await Promise.all([
+      AdminSubscription.deleteMany({ adminId }),
+      Reward.deleteMany({ adminId }),
+      User.deleteMany({ shopId: admin.shopId }),
+      Bill.deleteMany({ approvedBy: adminId }),
+      Redemption.deleteMany({ approvedBy: adminId }),
+      Admin.findByIdAndDelete(adminId)
+    ]);
+
+    res.json({ message: "Account and all associated data deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

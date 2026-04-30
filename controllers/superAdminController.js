@@ -8,6 +8,7 @@ import Bill from "../models/Bill.js";
 import Redemption from "../models/Redemption.js";
 import Reward from "../models/Reward.js";
 import SystemSettings from "../models/SystemSettings.js";
+import AdminSubscription from "../models/AdminSubscription.js";
 
 const signJwt = (sa) =>
   jwt.sign({ sub: String(sa._id), username: sa.username, tv: sa.tokenVersion, role: "superadmin" }, process.env.JWT_SECRET);
@@ -105,22 +106,27 @@ export const getAdminDetail = async (req, res) => {
   }
 };
 
-// Create admin (with email)
+// Create admin (with mobile)
 export const createAdmin = async (req, res) => {
   try {
-    const { email, password, name } = req.body;
-    if (!email || !password) return res.status(400).json({ message: "email and password are required" });
+    const { mobile, password, name } = req.body;
+    if (!mobile || !password) return res.status(400).json({ message: "mobile and password are required" });
 
-    const exists = await Admin.findOne({ email: email.toLowerCase() });
-    if (exists) return res.status(409).json({ message: "Email already registered" });
+    const exists = await Admin.findOne({
+      $or: [
+        { mobile: mobile },
+        { adminId: mobile }
+      ]
+    });
+    if (exists) return res.status(409).json({ message: "Mobile number already registered" });
 
     const shopId = "SHOP-" + nanoid(8).toUpperCase();
     const referralCode = "REF-" + nanoid(8).toUpperCase();
     const hash = await bcrypt.hash(password, 10);
 
     const admin = await Admin.create({
-      adminId: email.toLowerCase(),
-      email: email.toLowerCase(),
+      adminId: mobile,
+      mobile: mobile,
       password: hash,
       name,
       shopId,
@@ -167,6 +173,60 @@ export const toggleAdminStatus = async (req, res) => {
     await admin.save();
     
     res.json({ message: `Admin ${admin.isActive ? "activated" : "deactivated"}`, isActive: admin.isActive });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Delete Admin permanently
+export const deleteAdmin = async (req, res) => {
+  try {
+    const adminId = req.params.id;
+    const admin = await Admin.findById(adminId);
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    // Cleanup associated data
+    await Promise.all([
+      AdminSubscription.deleteMany({ adminId }),
+      Reward.deleteMany({ adminId }),
+      User.deleteMany({ shopId: admin.shopId }),
+      Bill.deleteMany({ approvedBy: adminId }),
+      Redemption.deleteMany({ approvedBy: adminId }),
+      Admin.findByIdAndDelete(adminId)
+    ]);
+
+    res.json({ message: "Admin and all associated data deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Create user (with mobile)
+export const createUser = async (req, res) => {
+  try {
+    const { mobile, password, name, shopId } = req.body;
+    if (!mobile || !password) return res.status(400).json({ message: "mobile and password are required" });
+
+    // In this app, users are uniquely identified by email+shopId, but we use mobile as identifier here
+    // We'll use a placeholder email since it's required in the schema
+    const placeholderEmail = `${mobile}@inaamify.com`;
+
+    const exists = await User.findOne({ email: placeholderEmail, shopId: shopId || "" });
+    if (exists) return res.status(409).json({ message: "User already registered with this mobile/shop" });
+
+    const user = await User.create({
+      name: name || mobile,
+      mobile,
+      email: placeholderEmail,
+      password,
+      shopId: shopId || "",
+      needsProfileSetup: !name,
+    });
+
+    res.status(201).json({
+      message: "User created successfully",
+      user: { id: user._id, name: user.name, mobile: user.mobile, shopId: user.shopId },
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
