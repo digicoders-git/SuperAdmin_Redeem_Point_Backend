@@ -38,9 +38,16 @@ app.use(morgan("dev"));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Serve static files (uploads) - allow cross-origin access
 app.use("/uploads", (req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  
+  // Handle preflight for static files if needed
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
   // Legacy Cloudinary path fix
   if (req.url.includes("redeem_") || req.url.includes("bills/redeem_")) {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "dcqvgr7fl";
