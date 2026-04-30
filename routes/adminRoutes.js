@@ -28,7 +28,7 @@ const __dirname = path.dirname(__filename);
 const router = express.Router();
 
 // Create uploads directory if it doesn't exist
-const uploadDir = path.join(__dirname, "../uploads/admin-photos");
+const uploadDir = path.join(process.cwd(), "uploads", "admin-photos");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
