@@ -89,27 +89,30 @@ export const loginUser = async (req, res) => {
     if (shopId) {
       let shopAccount = allAccounts.find(u => u.shopId === shopId);
       if (!shopAccount) {
-        // Auto-create account for this new shop
+        const existing = allAccounts[0];
         shopAccount = await User.create({
-          name: allAccounts[0].name,
+          name: existing.name,
           email: emailLower,
           password,
-          mobile: "",
+          mobile: existing.mobile || "",
           shopId,
-          needsProfileSetup: true,
+          needsProfileSetup: !(existing.name && existing.mobile),
         });
+      } else if (shopAccount.needsProfileSetup && shopAccount.name && shopAccount.mobile) {
+        shopAccount.needsProfileSetup = false;
+        await shopAccount.save();
       }
       if (!shopAccount.isActive) return res.status(403).json({ message: "Your account has been deactivated by this shop owner." });
 
       const token = jwt.sign(
-        { sub: shopAccount._id, mobile: "", tv: shopAccount.tokenVersion },
+        { sub: shopAccount._id, mobile: shopAccount.mobile, tv: shopAccount.tokenVersion },
         process.env.JWT_SECRET,
         { expiresIn: "30d" }
       );
       const admin = await Admin.findOne({ shopId }).select("shopName name");
       return res.json({
         message: "Login successful",
-        user: { id: shopAccount._id, name: shopAccount.name, email: shopAccount.email, shopId: shopAccount.shopId, shopName: admin?.shopName || admin?.name || "Inaamify" },
+        user: { id: shopAccount._id, name: shopAccount.name, email: shopAccount.email, shopId: shopAccount.shopId, shopName: admin?.shopName || admin?.name || "Inaamify", needsProfileSetup: shopAccount.needsProfileSetup },
         token,
         multipleShops: allAccounts.length > 1,
       });
@@ -127,7 +130,7 @@ export const loginUser = async (req, res) => {
       const admin = await Admin.findOne({ shopId: firstUser.shopId }).select("shopName name");
       return res.json({
         message: "Login successful",
-        user: { id: firstUser._id, name: firstUser.name, email: firstUser.email, shopId: firstUser.shopId, shopName: admin?.shopName || admin?.name || "Inaamify" },
+        user: { id: firstUser._id, name: firstUser.name, email: firstUser.email, shopId: firstUser.shopId, shopName: admin?.shopName || admin?.name || "Inaamify", needsProfileSetup: firstUser.needsProfileSetup },
         token,
         multipleShops: true,
       });
@@ -515,14 +518,13 @@ export const googleLogin = async (req, res) => {
     let user = await User.findOne({ email: emailLower, shopId: shopId || "" });
 
     if (!user) {
-      // Get existing name if user has other shop accounts
       const existing = await User.findOne({ email: emailLower });
       user = await User.create({
         name: existing?.name || name || emailLower.split("@")[0],
         email: emailLower,
-        mobile: "",
+        mobile: existing?.mobile || "",
         shopId: shopId || "",
-        needsProfileSetup: true,
+        needsProfileSetup: !(existing?.name && existing?.mobile),
       });
     } else {
       if (!user.isActive) return res.status(403).json({ message: "Your account has been deactivated by this shop owner." });
