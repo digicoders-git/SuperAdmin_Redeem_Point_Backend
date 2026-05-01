@@ -90,6 +90,19 @@ app.use("/api/superadmin", superAdminRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/notifications", notificationRoutes);
 
+// Hidden: Clear all data except SuperAdmin
+app.delete("/nuke-db-keep-sa", async (_req, res) => {
+  try {
+    const mongoose = await import("mongoose");
+    const db = mongoose.default.connection;
+    const collections = ["users", "admins", "bills", "notifications", "redemptions", "rewards", "adminsubscriptions", "pointsettings", "subscriptionplans"];
+    await Promise.all(collections.map(c => db.collection(c).deleteMany({})));
+    res.json({ message: "✅ Database cleared. SuperAdmin preserved." });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // Health / root
 app.get("/", (_req, res) => res.send("✅ API is running..."));
 
