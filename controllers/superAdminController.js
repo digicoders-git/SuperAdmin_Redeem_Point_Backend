@@ -242,6 +242,21 @@ export const createUser = async (req, res) => {
   }
 };
 
+// Delete user
+export const deleteUser = async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    await Promise.all([
+      Bill.deleteMany({ userId: req.params.id }),
+      Redemption.deleteMany({ userId: req.params.id }),
+    ]);
+    res.json({ message: "User deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Get all users
 export const getAllUsers = async (req, res) => {
   try {

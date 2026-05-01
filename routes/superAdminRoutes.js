@@ -9,6 +9,7 @@ import {
   deleteAdmin,
   getAllUsers,
   createUser,
+  deleteUser,
   getAllRewards,
   getAllBills,
   getAllRedemptions,
@@ -29,6 +30,7 @@ router.patch("/admins/:id/toggle", authenticateSuperAdmin, toggleAdminStatus);
 router.delete("/admins/:id", authenticateSuperAdmin, deleteAdmin);
 router.get("/users", authenticateSuperAdmin, getAllUsers);
 router.post("/users", authenticateSuperAdmin, createUser);
+router.delete("/users/:id", authenticateSuperAdmin, deleteUser);
 router.get("/users/:userId/bills", authenticateSuperAdmin, getUserBills);
 router.get("/rewards", authenticateSuperAdmin, getAllRewards);
 router.get("/bills", authenticateSuperAdmin, getAllBills);
