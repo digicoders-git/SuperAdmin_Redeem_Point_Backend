@@ -40,22 +40,16 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use("/uploads", (req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-  
-  // Handle preflight for static files if needed
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  // Legacy Cloudinary path fix
-  if (req.url.includes("redeem_") || req.url.includes("bills/redeem_")) {
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "dcqvgr7fl";
-    const cleanUrl = req.url.replace(/^\/(bills\/|admin-photos\/|rewards\/)?/, "");
-    return res.redirect(`https://res.cloudinary.com/${cloudName}/image/upload/${cleanUrl}`);
-  }
   next();
 }, express.static("uploads"));
+
+// Also serve without /uploads prefix for backward compatibility
+app.use("/admin-photos", (req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  next();
+}, express.static("uploads/admin-photos"));
 
 // Rate limit for login endpoints
 const authLimiter = rateLimit({

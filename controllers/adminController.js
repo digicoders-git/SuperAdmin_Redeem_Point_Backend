@@ -447,9 +447,9 @@ export const uploadAdminProfilePhoto = async (req, res) => {
     const admin = await Admin.findById(req.admin.id);
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-    // Generate proper URL for the uploaded file using Cloudinary path
-    // Store a relative URL path instead of the full filesystem path
-    admin.profilePhoto = "admin-photos/" + req.file.filename;
+    // Build public URL from local filename
+    const baseUrl = process.env.BASE_URL || "https://api.inaamify.com";
+    admin.profilePhoto = `${baseUrl}/uploads/admin-photos/${req.file.filename}`;
     await admin.save();
 
     res.json({

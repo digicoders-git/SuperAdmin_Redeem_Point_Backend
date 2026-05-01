@@ -47,19 +47,28 @@ export const uploadRewardImages = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
 }).array("rewardImages", 5);
 
-const profileStorage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: "redeem_profiles",
-    resource_type: "image",
-    allowed_formats: ["jpg", "jpeg", "png", "webp"],
-    transformation: [{ width: 400, height: 400, crop: "fill", gravity: "face" }],
+import multerLocal from "multer";
+import path from "path";
+import fs from "fs";
+
+const adminPhotosDir = "uploads/admin-photos";
+if (!fs.existsSync(adminPhotosDir)) fs.mkdirSync(adminPhotosDir, { recursive: true });
+
+const profileStorage = multerLocal.diskStorage({
+  destination: (_req, _file, cb) => cb(null, adminPhotosDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `admin-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
   },
 });
 
-export const uploadProfilePhoto = multer({
+export const uploadProfilePhoto = multerLocal({
   storage: profileStorage,
   limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = /jpg|jpeg|png|webp/;
+    cb(null, allowed.test(path.extname(file.originalname).toLowerCase()));
+  },
 }).single("profilePhoto");
 
 export { cloudinary };
