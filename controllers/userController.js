@@ -118,12 +118,13 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // No shopId — if multiple shops, show selection
+    // No shopId — always show shop selection if user has any shop accounts
     const activeAccounts = allAccounts.filter(u => u.shopId);
-    if (activeAccounts.length > 1) {
+    if (activeAccounts.length >= 1) {
       const firstUser = activeAccounts[0];
+      if (!firstUser.isActive) return res.status(403).json({ message: "Your account has been deactivated by this shop owner." });
       const token = jwt.sign(
-        { sub: firstUser._id, mobile: "", tv: firstUser.tokenVersion },
+        { sub: firstUser._id, mobile: firstUser.mobile, tv: firstUser.tokenVersion },
         process.env.JWT_SECRET,
         { expiresIn: "30d" }
       );
@@ -136,25 +137,17 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // Single account
+    // No shop accounts at all
     const user = allAccounts[0];
     if (!user.isActive) return res.status(403).json({ message: "Your account has been deactivated by this shop owner." });
-
-    // Auto-fix setup flag if details already exist
-    if (user.needsProfileSetup && user.name && user.mobile) {
-      user.needsProfileSetup = false;
-      await user.save();
-    }
-
     const token = jwt.sign(
       { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },
       process.env.JWT_SECRET,
       { expiresIn: "30d" }
     );
-    const admin = user.shopId ? await Admin.findOne({ shopId: user.shopId }).select("shopName name") : null;
     return res.json({
       message: "Login successful",
-      user: { id: user._id, name: user.name, email: user.email, shopId: user.shopId, shopName: admin?.shopName || admin?.name || "Inaamify", needsProfileSetup: user.needsProfileSetup },
+      user: { id: user._id, name: user.name, email: user.email, shopId: user.shopId, shopName: "Inaamify", needsProfileSetup: user.needsProfileSetup },
       token,
       multipleShops: false,
     });
@@ -537,7 +530,10 @@ export const googleLogin = async (req, res) => {
     }
 
     const allAccounts = await User.find({ email: emailLower });
-    const multipleShops = allAccounts.filter(u => u.shopId).length > 1;
+    // If no shopId in request, always show shop selection
+    const multipleShops = !shopId
+      ? allAccounts.filter(u => u.shopId).length >= 1
+      : allAccounts.filter(u => u.shopId).length > 1;
 
     const token = jwt.sign(
       { sub: user._id, mobile: "", tv: user.tokenVersion },
