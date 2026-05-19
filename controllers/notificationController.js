@@ -201,7 +201,8 @@ export const getUserNotifications = async (req, res) => {
     const notifications = await Notification.find({
       $or: [
         { recipientId: req.user.sub, recipientType: "user" },
-        { 
+        {
+          recipientId: { $exists: false },
           $or: [
             { shopId: user.shopId, recipientType: "user" },
             { recipientType: "all_users" }
@@ -217,7 +218,8 @@ export const getUserNotifications = async (req, res) => {
     const unreadCount = await Notification.countDocuments({
       $or: [
         { recipientId: req.user.sub, recipientType: "user" },
-        { 
+        {
+          recipientId: { $exists: false },
           $or: [
             { shopId: user.shopId, recipientType: "user" },
             { recipientType: "all_users" }
