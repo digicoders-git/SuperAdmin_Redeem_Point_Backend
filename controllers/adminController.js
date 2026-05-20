@@ -448,8 +448,7 @@ export const uploadAdminProfilePhoto = async (req, res) => {
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
     // Build public URL from local filename
-    const baseUrl = process.env.BASE_URL || "https://api.inaamify.com";
-    admin.profilePhoto = `${baseUrl}/uploads/admin-photos/${req.file.filename}`;
+    admin.profilePhoto = `uploads/admin-photos/${req.file.filename}`;
     await admin.save();
 
     res.json({

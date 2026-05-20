@@ -288,7 +288,7 @@ export const uploadUserPhoto = async (req, res) => {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
     const user = await User.findByIdAndUpdate(
       req.user.sub,
-      { profilePhoto: req.file.path },
+      { profilePhoto: `uploads/admin-photos/${req.file.filename}` },
       { new: true }
     ).select("-password");
     res.json({ message: "Profile photo updated", user });
