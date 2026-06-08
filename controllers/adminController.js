@@ -188,13 +188,17 @@ export const sendAdminOtp = async (req, res) => {
     const { phone } = req.body;
     if (!phone || phone.length !== 10) return res.status(400).json({ message: "Valid 10-digit phone number required" });
 
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    const apiUrl = `https://connect.muzztech.com/api/V1?api_key=3dec3166925678925d5602f25638bf7a&otp_template_name=otp&phone_number=${phone}`;
+    const response = await axios.get(apiUrl);
+
+    if (response.data.Status !== "Success") {
+      return res.status(400).json({ message: "Failed to send OTP. Try again." });
+    }
+
+    const sessionId = response.data.Details;
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
 
-    adminOtpStore.set(phone, { otp, expiresAt });
-
-    const apiUrl = `https://connect.muzztech.com/api/V1?api_key=3dec3166925678925d5602f25638bf7a&otp_template_name=otp&phone_number=${phone}&otp=${otp}&var1=${otp}`;
-    await axios.get(apiUrl);
+    adminOtpStore.set(phone, { sessionId, expiresAt });
 
     res.json({ message: "OTP sent successfully" });
   } catch (error) {
@@ -214,8 +218,13 @@ export const verifyAdminOtp = async (req, res) => {
       adminOtpStore.delete(phone);
       return res.status(400).json({ message: "OTP expired. Please request a new one." });
     }
-    if (String(stored.otp).trim() !== String(otp).trim()) {
-      return res.status(400).json({ message: `Invalid OTP. Expected: ${stored.otp}, Received: ${otp}` });
+    
+    // Verify OTP using Muzztech API
+    const verifyUrl = `http://connect.muzztech.com/api/V1?api_key=3dec3166925678925d5602f25638bf7a&otp_session=${stored.sessionId}&otp_entered_by_user=${otp}`;
+    const verifyRes = await axios.get(verifyUrl);
+
+    if (verifyRes.data.Status !== "Success") {
+      return res.status(400).json({ message: "Invalid OTP" });
     }
 
     adminOtpStore.delete(phone);
