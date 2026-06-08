@@ -188,7 +188,7 @@ export const sendAdminOtp = async (req, res) => {
     const { phone } = req.body;
     if (!phone || phone.length !== 10) return res.status(400).json({ message: "Valid 10-digit phone number required" });
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
 
     adminOtpStore.set(phone, { otp, expiresAt });
