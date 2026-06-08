@@ -17,7 +17,7 @@ export const sendOtp = async (req, res) => {
 
     otpStore.set(phone, { otp, expiresAt });
 
-    const apiUrl = `https://connect.muzztech.com/api/V1?api_key=3dec3166925678925d5602f25638bf7a&otp_template_name=otp&phone_number=${phone}&otp=${otp}`;
+    const apiUrl = `https://connect.muzztech.com/api/V1?api_key=3dec3166925678925d5602f25638bf7a&otp_template_name=otp&phone_number=${phone}&otp=${otp}&var1=${otp}`;
     await axios.get(apiUrl);
 
     res.json({ message: "OTP sent successfully" });
@@ -38,7 +38,7 @@ export const verifyOtp = async (req, res) => {
       otpStore.delete(phone);
       return res.status(400).json({ message: "OTP expired. Please request a new one." });
     }
-    if (stored.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
+    if (String(stored.otp).trim() !== String(otp).trim()) return res.status(400).json({ message: "Invalid OTP" });
 
     otpStore.delete(phone);
 
