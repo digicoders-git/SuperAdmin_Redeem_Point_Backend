@@ -38,7 +38,9 @@ export const verifyOtp = async (req, res) => {
       otpStore.delete(phone);
       return res.status(400).json({ message: "OTP expired. Please request a new one." });
     }
-    if (String(stored.otp).trim() !== String(otp).trim()) return res.status(400).json({ message: "Invalid OTP" });
+    if (String(stored.otp).trim() !== String(otp).trim()) {
+      return res.status(400).json({ message: `Invalid OTP. Expected: ${stored.otp}, Received: ${otp}` });
+    }
 
     otpStore.delete(phone);
 
