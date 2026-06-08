@@ -2,7 +2,8 @@ import express from "express";
 import { 
   registerAdmin,
   loginAdmin,
-  googleLoginAdmin,
+  sendAdminOtp,
+  verifyAdminOtp,
   listAdmins, 
   logoutAll, 
   changeAdminPassword, 
@@ -23,7 +24,8 @@ const router = express.Router();
 
 router.post("/register", registerAdmin);
 router.post("/login", loginAdmin);
-router.post("/google-login", googleLoginAdmin);
+router.post("/send-otp", sendAdminOtp);
+router.post("/verify-otp", verifyAdminOtp);
 
 // protected routes
 router.get("/list", authenticateAdmin, listAdmins);

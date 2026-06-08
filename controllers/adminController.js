@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import axios from "axios";
 import { nanoid } from "nanoid";
 import Admin from "../models/Admin.js";
 import AdminSubscription from "../models/AdminSubscription.js";
@@ -181,35 +182,62 @@ export const loginAdmin = async (req, res) => {
   }
 };
 
-// Google Login for Admin — auto register if not exists
-export const googleLoginAdmin = async (req, res) => {
+// Send OTP via Muzztech API for Admin
+export const sendAdminOtp = async (req, res) => {
   try {
-    const { googleUserInfo } = req.body;
-    if (!googleUserInfo?.email) return res.status(400).json({ message: "Google user info required" });
+    const { phone } = req.body;
+    if (!phone || phone.length !== 10) return res.status(400).json({ message: "Valid 10-digit phone number required" });
 
-    let admin = await Admin.findOne({ email: googleUserInfo.email.toLowerCase() }).select("+tokenVersion");
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+    adminOtpStore.set(phone, { otp, expiresAt });
+
+    const apiUrl = `https://connect.muzztech.com/api/V1?api_key=3dec3166925678925d5602f25638bf7a&otp_template_name=otp&phone_number=${phone}&otp=${otp}`;
+    await axios.get(apiUrl);
+
+    res.json({ message: "OTP sent successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to send OTP" });
+  }
+};
+
+// Verify OTP for Admin
+export const verifyAdminOtp = async (req, res) => {
+  try {
+    const { phone, otp } = req.body;
+    if (!phone || !otp) return res.status(400).json({ message: "Phone and OTP are required" });
+
+    const stored = adminOtpStore.get(phone);
+    if (!stored) return res.status(400).json({ message: "OTP not found. Please request a new one." });
+    if (Date.now() > stored.expiresAt) {
+      adminOtpStore.delete(phone);
+      return res.status(400).json({ message: "OTP expired. Please request a new one." });
+    }
+    if (stored.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
+
+    adminOtpStore.delete(phone);
+
+    let admin = await Admin.findOne({ mobile: phone }).select("+tokenVersion");
 
     if (!admin) {
       // Auto-create new admin
       const shopId = "SHOP-" + nanoid(8).toUpperCase();
       const referralCode = "REF-" + nanoid(8).toUpperCase();
-      const emailExists = await Admin.findOne({ 
-        $or: [
-          { email: googleUserInfo.email.toLowerCase() },
-          { adminId: googleUserInfo.email.toLowerCase() }
-        ]
-      });
-      if (emailExists) return res.status(409).json({ message: "Email or Admin ID already registered" });
-
+      const hash = await bcrypt.hash(nanoid(12), SALT_ROUNDS);
+      
       admin = await Admin.create({
-        adminId: googleUserInfo.email.toLowerCase(),
-        email: googleUserInfo.email.toLowerCase(),
-        name: googleUserInfo.name || googleUserInfo.email.split("@")[0],
+        adminId: phone,
+        email: `${phone}@admin.inaamify.com`,
+        password: hash,
+        name: phone,
+        mobile: phone,
         shopId,
         shopName: "",
         needsProfileSetup: true,
         referralCode,
       });
+
       try {
         const endDate = await getTrialEndDate();
         await AdminSubscription.create({
@@ -217,10 +245,12 @@ export const googleLoginAdmin = async (req, res) => {
           startDate: new Date(), endDate, status: "active", assignedBy: "system",
         });
       } catch (_) {}
-      admin = await Admin.findOne({ email: googleUserInfo.email.toLowerCase() }).select("+tokenVersion");
+      
+      admin = await Admin.findOne({ mobile: phone }).select("+tokenVersion");
     }
 
     if (admin.isActive === false) return res.status(403).json({ message: "Account is deactivated. Contact support." });
+
     // Auto-fix setup flag if details already exist
     const hasAllDetails = admin.name && admin.mobile && admin.shopName;
     if (admin.needsProfileSetup && hasAllDetails) {
@@ -230,6 +260,7 @@ export const googleLoginAdmin = async (req, res) => {
       admin.needsProfileSetup = true;
       await admin.save();
     }
+
     const token = signJwt(admin);
 
     res.json({

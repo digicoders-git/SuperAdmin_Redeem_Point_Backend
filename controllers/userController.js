@@ -1,9 +1,94 @@
 import User from "../models/User.js";
 import Admin from "../models/Admin.js";
 import jwt from "jsonwebtoken";
+import axios from "axios";
 
 // Temporary OTP storage (in production, use Redis)
 const otpStore = new Map();
+
+// Send OTP via Muzztech API
+export const sendOtp = async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone || phone.length !== 10) return res.status(400).json({ message: "Valid 10-digit phone number required" });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+    otpStore.set(phone, { otp, expiresAt });
+
+    const apiUrl = `https://connect.muzztech.com/api/V1?api_key=3dec3166925678925d5602f25638bf7a&otp_template_name=otp&phone_number=${phone}&otp=${otp}`;
+    await axios.get(apiUrl);
+
+    res.json({ message: "OTP sent successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to send OTP" });
+  }
+};
+
+// Verify OTP and Login/Register user
+export const verifyOtp = async (req, res) => {
+  try {
+    const { phone, otp, shopId } = req.body;
+    if (!phone || !otp) return res.status(400).json({ message: "Phone and OTP are required" });
+
+    const stored = otpStore.get(phone);
+    if (!stored) return res.status(400).json({ message: "OTP not found. Please request a new one." });
+    if (Date.now() > stored.expiresAt) {
+      otpStore.delete(phone);
+      return res.status(400).json({ message: "OTP expired. Please request a new one." });
+    }
+    if (stored.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
+
+    otpStore.delete(phone);
+
+    // Find or create user by phone + shopId
+    let user = await User.findOne({ mobile: phone, shopId: shopId || "" });
+
+    if (!user) {
+      const existing = await User.findOne({ mobile: phone });
+      user = await User.create({
+        name: existing?.name || phone,
+        email: `${phone}@phone.inaamify.com`,
+        mobile: phone,
+        shopId: shopId || "",
+        needsProfileSetup: !existing?.name,
+      });
+    } else {
+      if (!user.isActive) return res.status(403).json({ message: "Your account has been deactivated by this shop owner." });
+      if (user.needsProfileSetup && user.name && user.name !== phone) {
+        user.needsProfileSetup = false;
+        await user.save();
+      }
+    }
+
+    const allAccounts = await User.find({ mobile: phone });
+    const multipleShops = !shopId
+      ? allAccounts.filter(u => u.shopId).length >= 1
+      : allAccounts.filter(u => u.shopId).length > 1;
+
+    const token = jwt.sign(
+      { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
+    let shopName = "Inaamify";
+    if (user.shopId) {
+      const admin = await Admin.findOne({ shopId: user.shopId }).select("shopName name");
+      if (admin) shopName = admin.shopName || admin.name;
+    }
+
+    res.json({
+      message: "Login successful",
+      user: { id: user._id, name: user.name, email: user.email, mobile: user.mobile, shopId: user.shopId, shopName, needsProfileSetup: user.needsProfileSetup },
+      token,
+      multipleShops,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 // Register User (email + password)
 export const registerUser = async (req, res) => {

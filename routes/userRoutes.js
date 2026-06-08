@@ -3,6 +3,8 @@ import {
   registerUser,
   loginUser,
   googleLogin,
+  sendOtp,
+  verifyOtp,
   getProfile,
   updateProfile,
   uploadUserPhoto,
@@ -29,6 +31,8 @@ const router = express.Router();
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.post("/google-login", googleLogin);
+router.post("/send-otp", sendOtp);
+router.post("/verify-otp", verifyOtp);
 router.get("/shop-info/:shopId", getShopPublicInfo);
 router.get("/profile", userAuth, getProfile);
 router.get("/shops", userAuth, getUserShops);
