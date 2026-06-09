@@ -224,7 +224,7 @@ export const verifyAdminOtp = async (req, res) => {
     const verifyRes = await axios.get(verifyUrl);
 
     if (verifyRes.data.Status !== "Success") {
-      return res.status(400).json({ message: "Invalid OTP" });
+      return res.status(400).json({ message: `Muzztech Error: ${verifyRes.data.Status} - ${verifyRes.data.Details}` });
     }
 
     adminOtpStore.delete(phone);
