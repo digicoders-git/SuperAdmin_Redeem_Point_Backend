@@ -57,7 +57,12 @@ if (!fs.existsSync(adminPhotosDir)) fs.mkdirSync(adminPhotosDir, { recursive: tr
 const profileStorage = multerLocal.diskStorage({
   destination: (_req, _file, cb) => cb(null, adminPhotosDir),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
+    let ext = path.extname(file.originalname);
+    if (!ext) {
+      if (file.mimetype === "image/png") ext = ".png";
+      else if (file.mimetype === "image/webp") ext = ".webp";
+      else ext = ".jpg";
+    }
     cb(null, `admin-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
   },
 });
@@ -66,8 +71,11 @@ export const uploadProfilePhoto = multerLocal({
   storage: profileStorage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = /jpg|jpeg|png|webp/;
-    cb(null, allowed.test(path.extname(file.originalname).toLowerCase()));
+    const allowedMime = /image\/(jpeg|jpg|png|webp)/;
+    const allowedExt = /jpg|jpeg|png|webp/;
+    const extMatch = allowedExt.test(path.extname(file.originalname).toLowerCase());
+    const mimeMatch = allowedMime.test(file.mimetype);
+    cb(null, extMatch || mimeMatch);
   },
 }).single("profilePhoto");
 
