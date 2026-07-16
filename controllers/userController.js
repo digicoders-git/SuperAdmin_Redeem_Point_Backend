@@ -256,10 +256,15 @@ export const loginUser = async (req, res) => {
 // Get User's Shops
 export const getUserShops = async (req, res) => {
   try {
-    const currentUser = await User.findById(req.user.sub).select("email");
+    const currentUser = await User.findById(req.user.sub).select("email mobile");
     if (!currentUser) return res.status(404).json({ message: "User not found" });
 
-    const users = await User.find({ email: currentUser.email })
+    const query = [];
+    if (currentUser.email) query.push({ email: currentUser.email });
+    if (currentUser.mobile) query.push({ mobile: currentUser.mobile });
+    if (query.length === 0) query.push({ _id: currentUser._id });
+
+    const users = await User.find({ $or: query, shopId: { $ne: "" } })
       .select("shopId createdAt name")
       .sort({ createdAt: -1 });
 
@@ -290,8 +295,13 @@ export const switchShop = async (req, res) => {
     const targetUser = await User.findById(userId);
     if (!targetUser) return res.status(404).json({ message: "User not found" });
 
-    const currentUser = await User.findById(req.user.sub).select("email");
-    if (targetUser.email !== currentUser.email)
+    const currentUser = await User.findById(req.user.sub).select("email mobile");
+    
+    const isAuthorized = 
+      (currentUser.email && targetUser.email === currentUser.email) ||
+      (currentUser.mobile && targetUser.mobile === currentUser.mobile);
+
+    if (!isAuthorized)
       return res.status(403).json({ message: "Unauthorized shop access" });
 
     const token = jwt.sign(
