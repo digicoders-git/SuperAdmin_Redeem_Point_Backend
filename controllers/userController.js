@@ -81,7 +81,7 @@ export const verifyOtp = async (req, res) => {
     const token = jwt.sign(
       { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },
       process.env.JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "30d" }
     );
 
     let shopName = "Inaamify";
@@ -118,7 +118,7 @@ export const registerUser = async (req, res) => {
     const token = jwt.sign(
       { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },
       process.env.JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "30d" }
     );
 
     let shopName = "Inaamify";
@@ -162,7 +162,7 @@ export const loginUser = async (req, res) => {
       const token = jwt.sign(
         { sub: newUser._id, mobile: "", tv: newUser.tokenVersion },
         process.env.JWT_SECRET,
-        { expiresIn: "30d" }
+        { expiresIn: process.env.JWT_EXPIRES_IN || "30d" }
       );
       let shopName = "Inaamify";
       if (newUser.shopId) {
@@ -203,7 +203,7 @@ export const loginUser = async (req, res) => {
       const token = jwt.sign(
         { sub: shopAccount._id, mobile: shopAccount.mobile, tv: shopAccount.tokenVersion },
         process.env.JWT_SECRET,
-        { expiresIn: "30d" }
+        { expiresIn: process.env.JWT_EXPIRES_IN || "30d" }
       );
       const admin = await Admin.findOne({ shopId }).select("shopName name");
       return res.json({
@@ -222,7 +222,7 @@ export const loginUser = async (req, res) => {
       const token = jwt.sign(
         { sub: firstUser._id, mobile: firstUser.mobile, tv: firstUser.tokenVersion },
         process.env.JWT_SECRET,
-        { expiresIn: "30d" }
+        { expiresIn: process.env.JWT_EXPIRES_IN || "30d" }
       );
       const admin = await Admin.findOne({ shopId: firstUser.shopId }).select("shopName name");
       return res.json({
@@ -239,7 +239,7 @@ export const loginUser = async (req, res) => {
     const token = jwt.sign(
       { sub: user._id, mobile: user.mobile, tv: user.tokenVersion },
       process.env.JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "30d" }
     );
     return res.json({
       message: "Login successful",
@@ -307,7 +307,7 @@ export const switchShop = async (req, res) => {
     const token = jwt.sign(
       { sub: targetUser._id, mobile: targetUser.mobile, tv: targetUser.tokenVersion },
       process.env.JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "30d" }
     );
 
     let shopName = "Inaamify";
@@ -403,12 +403,10 @@ export const uploadUserPhoto = async (req, res) => {
   }
 };
 
-// Logout
+// Logout (Local only, keeps other devices logged in)
 export const logoutUser = async (req, res) => {
   try {
-    await User.findByIdAndUpdate(req.user.sub, {
-      $inc: { tokenVersion: 1 },
-    });
+    // We don't increment tokenVersion here anymore, so other devices stay logged in.
     res.json({ message: "Logged out successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -644,7 +642,7 @@ export const googleLogin = async (req, res) => {
     const token = jwt.sign(
       { sub: user._id, mobile: "", tv: user.tokenVersion },
       process.env.JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "30d" }
     );
 
     let shopName = "Inaamify";

@@ -21,7 +21,7 @@ const signJwt = (admin) =>
   jwt.sign(
     { sub: String(admin._id), adminId: admin.adminId, tv: admin.tokenVersion },
     JWT_SECRET,
-    { expiresIn: "30d" }
+    { expiresIn: process.env.JWT_EXPIRES_IN || "30d" }
   );
 
 const getTrialEndDate = async () => {
