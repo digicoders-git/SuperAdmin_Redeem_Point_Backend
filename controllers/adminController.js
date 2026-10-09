@@ -543,6 +543,7 @@ export const getAdminByShopId = async (req, res) => {
       admin: {
         adminId: admin.adminId,
         name: admin.name,
+        mobile: admin.mobile,
         profilePhoto: admin.profilePhoto,
         shopId: admin.shopId,
         shopName: admin.shopName,
