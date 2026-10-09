@@ -77,12 +77,27 @@ export const updateReward = async (req, res) => {
 
     // Handle uploaded images
     const uploadedImages = req.files ? req.files.map((f) => f.path) : [];
-    if (uploadedImages.length > 0) {
-      updates.rewardImages = uploadedImages;
-      updates.rewardImage = uploadedImages[0];
-    } else if (rewardImage !== undefined) {
+    
+    let finalImages = [];
+    if (req.body.existingImages) {
+      if (Array.isArray(req.body.existingImages)) {
+        finalImages = req.body.existingImages;
+      } else {
+        finalImages = [req.body.existingImages];
+      }
+    }
+    
+    finalImages = [...finalImages, ...uploadedImages];
+
+    if (finalImages.length > 0) {
+      updates.rewardImages = finalImages;
+      updates.rewardImage = finalImages[0];
+    } else if (rewardImage !== undefined && rewardImage !== "") {
       updates.rewardImage = rewardImage;
-      if (rewardImage) updates.rewardImages = [rewardImage];
+      updates.rewardImages = [rewardImage];
+    } else {
+      updates.rewardImages = [];
+      updates.rewardImage = "";
     }
 
     const reward = await Reward.findByIdAndUpdate(req.params.id, updates, { new: true });
