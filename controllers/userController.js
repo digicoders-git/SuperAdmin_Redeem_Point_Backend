@@ -337,8 +337,8 @@ export const getProfile = async (req, res) => {
     // Fetch shop name
     let shopName = "Inaamify";
     if (user.shopId) {
-      const admin = await Admin.findOne({ shopId: user.shopId }).select("shopName name");
-      if (admin) shopName = admin.shopName || admin.name;
+      const admin = await Admin.findOne({ shopId: user.shopId.trim() }).select("shopName name");
+      if (admin) shopName = admin.shopName?.trim() || admin.name?.trim() || "Inaamify";
     }
 
     res.json({ user: { ...user.toObject(), shopName, needsProfileSetup: user.needsProfileSetup } });
