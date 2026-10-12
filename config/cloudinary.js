@@ -47,36 +47,18 @@ export const uploadRewardImages = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
 }).array("rewardImages", 5);
 
-import multerLocal from "multer";
-import path from "path";
-import fs from "fs";
-
-const adminPhotosDir = "uploads/admin-photos";
-if (!fs.existsSync(adminPhotosDir)) fs.mkdirSync(adminPhotosDir, { recursive: true });
-
-const profileStorage = multerLocal.diskStorage({
-  destination: (_req, _file, cb) => cb(null, adminPhotosDir),
-  filename: (_req, file, cb) => {
-    let ext = path.extname(file.originalname);
-    if (!ext) {
-      if (file.mimetype === "image/png") ext = ".png";
-      else if (file.mimetype === "image/webp") ext = ".webp";
-      else ext = ".jpg";
-    }
-    cb(null, `admin-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+const profileStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "redeem_profiles",
+    resource_type: "image",
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
   },
 });
 
-export const uploadProfilePhoto = multerLocal({
+export const uploadProfilePhoto = multer({
   storage: profileStorage,
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    const allowedMime = /image\/(jpeg|jpg|png|webp)/;
-    const allowedExt = /jpg|jpeg|png|webp/;
-    const extMatch = allowedExt.test(path.extname(file.originalname).toLowerCase());
-    const mimeMatch = allowedMime.test(file.mimetype);
-    cb(null, extMatch || mimeMatch);
-  },
 }).single("profilePhoto");
 
 export { cloudinary };

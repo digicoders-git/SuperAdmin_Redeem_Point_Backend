@@ -38,18 +38,34 @@ app.use(morgan("dev"));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Normalize double slashes in incoming URLs (e.g. //uploads/)
+app.use((req, res, next) => {
+  if (req.url.startsWith("//")) {
+    req.url = req.url.replace(/^\/+/, "/");
+  }
+  next();
+});
+
+const uploadsPath = path.join(__dirname, "uploads");
+
 app.use("/uploads", (req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   next();
-}, express.static("uploads"));
+}, express.static(uploadsPath));
 
 // Also serve without /uploads prefix for backward compatibility
 app.use("/admin-photos", (req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   next();
-}, express.static("uploads/admin-photos"));
+}, express.static(path.join(uploadsPath, "admin-photos")));
 
 // Rate limit for login endpoints
 const authLimiter = rateLimit({

@@ -489,8 +489,8 @@ export const uploadAdminProfilePhoto = async (req, res) => {
     const admin = await Admin.findById(req.admin.id);
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-    // Build public URL from local filename
-    admin.profilePhoto = `uploads/admin-photos/${req.file.filename}`;
+    // Save Cloudinary URL
+    admin.profilePhoto = req.file.path || req.file.secure_url || req.file.url;
     await admin.save();
 
     res.json({
